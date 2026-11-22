@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 线性代数与微积分 | Quant 面试复习手册</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <a class="brand" href="index.html">Quant 面试复习手册</a>
+  <nav><a class="nav-item" href="00.html"><span class="nav-num">00</span>总目录与快速通道</a>
+<a class="nav-item" href="01.html"><span class="nav-num">01</span>概率与统计</a>
+<a class="nav-item" href="02.html"><span class="nav-num">02</span>随机微积分与股价模型</a>
+<a class="nav-item" href="03.html"><span class="nav-num">03</span>衍生品定价与 BSM</a>
+<a class="nav-item" href="04.html"><span class="nav-num">04</span>机器学习与深度学习</a>
+<a class="nav-item active" href="05.html"><span class="nav-num">05</span>线性代数与微积分</a>
+<a class="nav-item" href="06.html"><span class="nav-num">06</span>金融专题：做市、组合与建模</a>
+<a class="nav-item" href="07.html"><span class="nav-num">07</span>预测市场与二元合约</a></nav>
+  <div class="sidebar-foot"><a href="index.html">⌂ 总目录</a></div>
+</aside>
+<main class="content">
+<article>
+<h1>Quant 面试复习手册 05｜线性代数与微积分速查</h1>
+<blockquote>
+<p>📌 <strong>Quant 面试复习手册 · 第 5 篇 / 共 7 篇</strong>（总目录）<br />
+本篇覆盖：矩阵恒等式 → 特殊矩阵 → 五大分解 → 投影 → 求导/积分/泰勒/求和速查表。<br />
+框架参考 OpenQuant《Quant Interview Study Guide》。定位：考前速查表，重点标 ★ 处必背。</p>
+</blockquote>
+<h2>一、矩阵基础</h2>
+<h3>1.1 ★ 必背恒等式（A、B 为 n×n 方阵）</h3>
+<p><div class="math-display">$$ (AB)^\intercal=B^\intercal A^\intercal\qquad (AB)^{-1}=B^{-1}A^{-1}\qquad A^{-1}A=AA^{-1}=I $$</div><br />
+<div class="math-display">$$ \text{rank}(A)+\text{null}(A)=n\qquad \cos\theta=\frac{x^\intercal y}{\|x\|\|y\|} $$</div><br />
+<div class="math-display">$$ Av=\lambda v\Rightarrow(A-\lambda I)v=0\Rightarrow\det(A-\lambda I)=0 $$</div><br />
+<div class="math-display">$$ \det(A)=\det(A^\intercal)=\frac{1}{\det(A^{-1})}=\prod_{i=1}^n\lambda_i\qquad \det(AB)=\det(A)\det(B)\qquad \det(cA)=c^n\det(A) $$</div><br />
+<div class="math-display">$$ \text{trace}(A)=\sum_iA_{ii}=\sum_{i=1}^n\lambda_i $$</div></p>
+<blockquote>
+<p>💡 <strong>trace 和 det 是特征值的"摘要"</strong>：trace = 特征值之和，det = 特征值之积。</p>
+</blockquote>
+<h3>1.2 非奇异（可逆）的等价刻画</h3>
+<p>满足任一条即可逆：① rank = n；② <span class="math-inline">$A^\intercal$</span> 可逆；③ <span class="math-inline">$\det\ne0$</span>；④ <span class="math-inline">$Ax=0$</span> 只有零解。</p>
+<p>2×2 速算：<span class="math-inline">$A^{-1}=\frac{1}{\det(A)}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$</span>；高阶用高斯-约当消元 <span class="math-inline">$[A\mid I]\to[I\mid A^{-1}]$</span>。</p>
+<h3>1.3 特殊矩阵</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>定义</th>
+<th>记忆点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2D 旋转矩阵</td>
+<td><span class="math-inline">$R_\theta=\begin{bmatrix}\cos\theta&-\sin\theta\\\sin\theta&\cos\theta\end{bmatrix}$</span></td>
+<td>逆时针转 θ</td>
+</tr>
+<tr>
+<td><strong>正交矩阵</strong></td>
+<td><span class="math-inline">$Q^\intercal=Q^{-1}$</span>（行列标准正交）</td>
+<td>必可逆；几何 = 旋转</td>
+</tr>
+<tr>
+<td><strong>幂等矩阵</strong></td>
+<td><span class="math-inline">$A^2=A$</span></td>
+<td>投影矩阵</td>
+</tr>
+<tr>
+<td><strong>PSD / PD</strong></td>
+<td><span class="math-inline">$z^\intercal Az\ge0\ (>0)$</span> 对任意非零 z；特征值全 ≥0（&gt;0）；主子式全 ≥0（&gt;0）</td>
+<td>见 1.4</td>
+</tr>
+</tbody>
+</table>
+<h3>1.4 ★ 半正定矩阵（协方差矩阵的合法性）</h3>
+<p><strong>协方差矩阵、相关矩阵恒为 PSD</strong>（无完全线性相关时 PD）。速判：</p>
+<ul>
+<li>三个充要条件：二次型 ≥0 / 特征值 ≥0 / 各阶主子式 ≥0</li>
+<li><strong>对角线出现负元素 ⇒ 必非 PSD</strong>（快速排除法）</li>
+<li>面试应用：构造合法协方差矩阵、检查估计出的相关矩阵、Cholesky 分解的前提</li>
+</ul>
+<h2>二、矩阵工具箱：分解、投影、PCA 与凸优化</h2>
+<table>
+<thead>
+<tr>
+<th>分解</th>
+<th>形式</th>
+<th>条件</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>对角化</strong></td>
+<td><span class="math-inline">$A=XDX^{-1}$</span>（X 列=特征向量）</td>
+<td>有 n 个线性无关特征向量；<strong>实对称必可对角化</strong></td>
+<td>★ 快速算矩阵幂 <span class="math-inline">$A^n=XD^nX^{-1}$</span></td>
+</tr>
+<tr>
+<td><strong>SVD</strong></td>
+<td><span class="math-inline">$A=U\Sigma V^\intercal$</span>（U、V 正交，Σ 对角非负降序）</td>
+<td><strong>任意</strong> m×n 矩阵</td>
+<td>低秩近似、PCA</td>
+</tr>
+<tr>
+<td><strong>QR</strong></td>
+<td><span class="math-inline">$A=QR$</span>（Q 正交，R 上三角）</td>
+<td>A 非奇异</td>
+<td>解 <span class="math-inline">$Ax=b$</span>：<span class="math-inline">$Rx=Q^\intercal b$</span>；不满秩最小二乘</td>
+</tr>
+<tr>
+<td><strong>LU</strong></td>
+<td><span class="math-inline">$A=LU$</span>（下×上三角）</td>
+<td>A 非奇异</td>
+<td>解方程组；<span class="math-inline">$\det(A)=\prod L_{ii}\prod U_{jj}$</span></td>
+</tr>
+<tr>
+<td><strong>Cholesky</strong></td>
+<td><span class="math-inline">$A=R^\intercal R$</span></td>
+<td>A <strong>对称正定</strong></td>
+<td>LU 的特例（<span class="math-inline">$L=U^\intercal$</span>）；采样相关随机变量标配</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡 <strong>"对称必可对角化，SVD 万物皆可分，Cholesky 只吃正定。"</strong><br />
+经典面试题：<strong>如何采样相关正态变量？</strong> 答：Cholesky 分解协方差矩阵 <span class="math-inline">$\Sigma=RR^\intercal$</span>，独立正态向量 <span class="math-inline">$Z$</span>，取 <span class="math-inline">$X=RZ$</span> 即得目标协方差。</p>
+</blockquote>
+<h3>2.1 投影（OLS 的几何本质）</h3>
+<p>对向量：<span class="math-inline">$\text{proj}_v(x)=\dfrac{vv^\intercal}{\|v\|^2}x=\dfrac{x\cdot v}{\|v\|^2}v$</span>；对正交基张成的子空间逐个投影求和。</p>
+<p>核心性质：<span class="math-inline">$\text{proj}_S(x)\in S$</span>，且残差 <span class="math-inline">$x-\text{proj}_S(x)$</span> 与 <span class="math-inline">$S$</span> 中一切向量正交。</p>
+<p><div class="math-display">$$ \boxed{\text{线性回归 = 把 } y \text{ 投影到 } X \text{ 的列空间}} $$</div></p>
+<p>（拟合值 <span class="math-inline">$\hat y$</span> 是列空间中离 <span class="math-inline">$y$</span> 最近的点，残差与所有回归量正交。）</p>
+<h3>2.2 PCA 金融应用 + 凸优化速览</h3>
+<p><strong>PCA（主成分分析）</strong>：对收益协方差矩阵做特征分解，特征值谱给出各"隐藏驱动力"解释的方差占比。</p>
+<ul>
+<li>经验事实：500 个资产的收益率，<strong>前 5 个主成分就能解释 70%+ 的总波动</strong>；第一主成分 ≈ "整个市场的涨跌"</li>
+<li>用途：降维、提取风险因子、协方差矩阵收缩（高维协方差估计噪声大 → 用前 k 个主成分重构）</li>
+<li>与 SVD 的关系：PCA = 对中心化数据矩阵做 SVD 的应用</li>
+</ul>
+<p><strong>凸优化</strong>：量化中几乎所有最优化问题都写成凸问题（如 MVO 是凸二次规划）。</p>
+<ul>
+<li>核心：目标函数与可行域都是"碗状"（凸）⇒ <strong>局部最优 = 全局最优</strong>，梯度下降闭眼走到谷底</li>
+<li>非凸（如 Rosenbrock 函数）→ 会卡在半山腰的坑里</li>
+<li>实践：Python 的 <strong>cvxpy</strong> 几行代码解带约束的组合优化（收益约束、做空上限、单资产集中度上限）</li>
+<li>与过拟合的联系：正则化 = 给优化问题加约束/罚项（第 4 篇 Ridge/Lasso 的优化视角）</li>
+</ul>
+<h2>三、微积分速查</h2>
+<h3>3.1 求导法则</h3>
+<p><div class="math-display">$$ (x^n)'=nx^{n-1}\qquad (\sin)'=\cos\qquad (\cos)'=-\sin\qquad (\tan)'=\sec^2 $$</div><br />
+<div class="math-display">$$ (e^x)'=e^x\qquad (\ln x)'=\frac1x\qquad (fg)'=f'g+g'f\qquad \left(\frac fg\right)'=\frac{f'g-fg'}{g^2} $$</div><br />
+<div class="math-display">$$ [f(g)]'=f'(g)\,g'(g)\qquad (x^x)'=x^x(\ln x+1)\qquad (\arctan)'=\frac{1}{1+x^2}\qquad (\arcsin)'=\frac{1}{\sqrt{1-x^2}} $$</div></p>
+<h3>3.2 积分</h3>
+<p><div class="math-display">$$ \int x^ndx=\frac{x^{n+1}}{n+1}\ (n\ne-1)\qquad \int\frac1xdx=\ln|x|\qquad \int e^xdx=e^x $$</div><br />
+<div class="math-display">$$ \int\sin=-\cos\qquad \int\cos=\sin\qquad \int\tan=-\ln|\cos|\qquad \int\frac{dx}{1+x^2}=\arctan x $$</div><br />
+分部积分 <span class="math-inline">$\int uv'=uv-\int u'v$</span>；换元 <span class="math-inline">$\int f'(g)g'=f(g)$</span></p>
+<h3>3.3 ★ 泰勒级数（量化应用：Delta-Gamma 近似、伊藤引理）</h3>
+<p><div class="math-display">$$ f(x)=\sum_{n=0}^\infty\frac{f^{(n)}(x_0)}{n!}(x-x_0)^n $$</div></p>
+<p><div class="math-display">$$ e^x=1+x+\frac{x^2}{2!}+\dots\qquad \sin x=x-\frac{x^3}{3!}+\dots\qquad \cos x=1-\frac{x^2}{2!}+\dots $$</div></p>
+<h3>3.4 常用求和</h3>
+<p><div class="math-display">$$ \sum_{k=1}^nk=\frac{n(n+1)}{2}\qquad \sum_{k=1}^nk^2=\frac{n(n+1)(2n+1)}{6}\qquad \sum_{k=s}^\infty ar^k=\frac{ar^s}{1-r}\qquad \sum_{k=1}^\infty\frac1{k^2}=\frac{\pi^2}{6} $$</div></p>
+<h2>四、自测清单（必须掌握的考点）</h2>
+<ul>
+<li>☐ trace/det 与特征值的关系</li>
+<li>☐ 可逆四等价刻画</li>
+<li>☐ 正交 = 旋转、幂等 = 投影</li>
+<li>☐ PSD 三判据 + "负对角元必非 PSD"</li>
+<li>☐ 五大分解各自的条件与用途，实对称必可对角化</li>
+<li>☐ Cholesky 采样相关随机变量的完整流程</li>
+<li>☐ OLS = 投影的几何解释（残差正交）</li>
+<li>☐ 泰勒展开在量化中的两个应用（Delta-Gamma、伊藤）</li>
+<li>☐ PCA：特征值谱的含义；"第一主成分 ≈ 市场"的金融解读</li>
+<li>☐ 凸优化：为什么"碗状"问题可全局求解；MVO 是凸 QP</li>
+</ul>
+<h2>五、30 秒速查总表</h2>
+<table>
+<thead>
+<tr>
+<th>考点</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>trace / det</td>
+<td>特征值之和 / 之积</td>
+</tr>
+<tr>
+<td>正交 / 幂等 / PSD</td>
+<td>旋转 / 投影 / 合法协方差</td>
+</tr>
+<tr>
+<td>对角化</td>
+<td>实对称必可；<span class="math-inline">$A^n=XD^nX^{-1}$</span></td>
+</tr>
+<tr>
+<td>SVD</td>
+<td>万物皆可 <span class="math-inline">$A=U\Sigma V^\intercal$</span>，低秩近似</td>
+</tr>
+<tr>
+<td>Cholesky</td>
+<td>只吃对称正定；<span class="math-inline">$A=R^\intercal R$</span>；采样相关变量</td>
+</tr>
+<tr>
+<td>投影</td>
+<td>OLS 几何本质；残差正交于列空间</td>
+</tr>
+<tr>
+<td>PCA</td>
+<td>前 5 个主成分解释 70%+ 波动；第一主成分 ≈ 市场</td>
+</tr>
+<tr>
+<td>凸优化</td>
+<td>凸 ⇒ 局部最优 = 全局最优；MVO 是凸 QP，cvxpy 求解</td>
+</tr>
+<tr>
+<td>泰勒</td>
+<td>Delta-Gamma 近似 + 伊藤修正项的来源</td>
+</tr>
+</tbody>
+</table>
+<p><em>框架参考：OpenQuant《Quant Interview Study Guide》；Strang《Linear Algebra and Its Applications》。</em><br />
+<em>系列导航：[00 总目录] → [01 概率与统计] → [02 随机微积分与股价模型] → [03 衍生品定价与 BSM] → [04 机器学习与深度学习] → </em><em>[05 线性代数与微积分]</em><em> → [06 金融专题] → [07 预测市场与二元合约（补充篇）]</em></p>
+</article>
+<div class="pager-row"><a class="pager prev" href="04.html">← 机器学习与深度学习</a><a class="pager next" href="06.html">金融专题：做市、组合与建模 →</a></div>
+<footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>
+</main>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.querySelector("article"), {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>

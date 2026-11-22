@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · 金融专题：做市、组合与建模 | Quant 面试复习手册</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <a class="brand" href="index.html">Quant 面试复习手册</a>
+  <nav><a class="nav-item" href="00.html"><span class="nav-num">00</span>总目录与快速通道</a>
+<a class="nav-item" href="01.html"><span class="nav-num">01</span>概率与统计</a>
+<a class="nav-item" href="02.html"><span class="nav-num">02</span>随机微积分与股价模型</a>
+<a class="nav-item" href="03.html"><span class="nav-num">03</span>衍生品定价与 BSM</a>
+<a class="nav-item" href="04.html"><span class="nav-num">04</span>机器学习与深度学习</a>
+<a class="nav-item" href="05.html"><span class="nav-num">05</span>线性代数与微积分</a>
+<a class="nav-item active" href="06.html"><span class="nav-num">06</span>金融专题：做市、组合与建模</a>
+<a class="nav-item" href="07.html"><span class="nav-num">07</span>预测市场与二元合约</a></nav>
+  <div class="sidebar-foot"><a href="index.html">⌂ 总目录</a></div>
+</aside>
+<main class="content">
+<article>
+<h1>Quant 面试复习手册 06｜金融专题：做市、组合理论与建模工作流</h1>
+<blockquote>
+<p>📌 <strong>Quant 面试复习手册 · 第 6 篇 / 共 7 篇（主干收官）</strong>（总目录）<br />
+本篇覆盖：做市（Avellaneda-Stoikov）→ 组合理论（MVO/CAPM/APT/FF3）→ 随机模型应用箱（OU/Heston/Kelly）→ 模拟与六步工作流。<br />
+前置：第 2、3 篇（伊藤引理、BSM）。</p>
+</blockquote>
+<h2>一、做市（Market Making）</h2>
+<h3>1.1 限价订单簿（LOB）核心概念</h3>
+<ul>
+<li><strong>买卖价差</strong> = Best Ask − Best Bid，做市商的利润来源</li>
+<li><strong>中间价</strong>：<span class="math-inline">$S_{mid}=\frac{P_{ask}+P_{bid}}{2}$</span></li>
+<li><strong>市场深度</strong>：各价位挂单量；深市场吸收大单而价格少动</li>
+<li><strong>逆向选择</strong>：与信息占优者成交、随后价格不利的风险——做市亏损主来源。做市账本：<span class="math-inline">$E[\text{PnL}]=P(\text{噪音流})\times\text{价差}-P(\text{知情流})\times\text{亏损}$</span>；对策 = 只在飞刀概率低的时刻出手 + 快速撤单（速度赢两次：一次抢成交，一次抢逃跑）</li>
+</ul>
+<h3>1.2 库存风险管理与报价偏移</h3>
+<table>
+<thead>
+<tr>
+<th>库存状态</th>
+<th>报价动作</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>多头 <span class="math-inline">$q>0$</span></td>
+<td>整体<strong>下调</strong>报价</td>
+<td>劝退买入、吸引卖出</td>
+</tr>
+<tr>
+<td>空头 <span class="math-inline">$q<0$</span></td>
+<td>整体<strong>上调</strong>报价</td>
+<td>鼓励回补</td>
+</tr>
+</tbody>
+</table>
+<h3>1.3 ★ Avellaneda-Stoikov（2008）最优做市模型</h3>
+<p><strong>保留价格</strong>（随库存偏离中间价）：</p>
+<p><div class="math-display">$$ r(s,t,q)=s-q\gamma\sigma^2(T-t) $$</div></p>
+<p><strong>最优半价差</strong>：</p>
+<p><div class="math-display">$$ \delta=\frac2\gamma\ln\Big(1+\frac\gamma\kappa\Big)+\gamma\sigma^2(T-t) $$</div></p>
+<p>报价 = 围绕<strong>保留价</strong>（非中间价）对称挂出：<span class="math-inline">$P_{ask}=r+\frac\delta2,\ P_{bid}=r-\frac\delta2$</span>。</p>
+<p>（<span class="math-inline">$s$</span> 中间价、<span class="math-inline">$q$</span> 库存、<span class="math-inline">$\gamma$</span> 风险厌恶、<span class="math-inline">$\sigma$</span> 波动率、<span class="math-inline">$\kappa$</span> 流动性参数=成交概率随报价偏离的衰减速度。）</p>
+<blockquote>
+<p>💡 <strong>"库存越多报价越偏（想甩货），越临近收盘越急（清库存）；价差宽度随风险厌恶和波动放大。"</strong></p>
+</blockquote>
+<h3>1.4 关键绩效指标</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sharpe</td>
+<td>价差利润是否补偿库存风险</td>
+</tr>
+<tr>
+<td>库存周转率</td>
+<td>周转越快，长期趋势暴露越少</td>
+</tr>
+<tr>
+<td>最大回撤</td>
+<td>资本管理与避免破产</td>
+</tr>
+<tr>
+<td>成交率 Fill Rate</td>
+<td>报价竞争力</td>
+</tr>
+</tbody>
+</table>
+<h2>二、组合理论</h2>
+<h3>2.1 均值-方差优化（MVO，Markowitz）</h3>
+<p>两资产（权重 <span class="math-inline">$w$</span> 与 <span class="math-inline">$1-w$</span>）：</p>
+<p><div class="math-display">$$ \mu_p=w\mu_1+(1-w)\mu_2,\qquad \sigma_p^2=w^2\sigma_1^2+(1-w)^2\sigma_2^2+2w(1-w)\rho\sigma_1\sigma_2 $$</div></p>
+<p><strong>分散化的威力全在 <span class="math-inline">$\rho$</span></strong>：低或负相关时，组合风险可低于任一单资产。</p>
+<p><strong>有效前沿</strong>：</p>
+<p><div class="math-display">$$ \min_{\mathbf w}\ \mathbf w^\intercal\boldsymbol\Sigma\mathbf w\quad \text{s.t.}\quad \mathbf w^\intercal\boldsymbol\mu=\mu_p,\ \mathbf w^\intercal\mathbf 1=1 $$</div></p>
+<h3>2.2 Sharpe 与资本市场线</h3>
+<p><div class="math-display">$$ \text{Sharpe}=\frac{E[R_p]-R_f}{\sigma_p} $$</div></p>
+<p>引入无风险资产后，最优组合 = 无风险资产 + <strong>切点组合</strong>（有效前沿上 Sharpe 最高者，CAPM 语境即市场组合）的线性组合；连线即 <strong>CML</strong>。</p>
+<h3>2.3 ★ 三代资产定价模型</h3>
+<p><strong>① CAPM</strong>：</p>
+<p><div class="math-display">$$ E[R_i]=R_f+\beta_i(E[R_m]-R_f),\qquad \beta_i=\frac{\mathrm{Cov}(R_i,R_m)}{\mathrm{Var}(R_m)} $$</div></p>
+<ul>
+<li><strong>SML</strong>：期望收益 vs β 图像；<strong>Alpha</strong> = 实证回归 <span class="math-inline">$R_i-R_f=\alpha_i+\beta_i(R_m-R_f)+\epsilon_i$</span> 的截距 = 市场解释不了的超额收益</li>
+</ul>
+<p><strong>② APT</strong>（多因子）：</p>
+<p><div class="math-display">$$ E[R_i]=R_f+\sum_{j=1}^k\beta_{ij}\lambda_j $$</div></p>
+<p><strong>APT 不指定因子，需实证识别</strong>——与 CAPM 的关键区别。</p>
+<p><strong>③ Fama-French 三因子</strong>：</p>
+<p><div class="math-display">$$ E[R_i]-R_f=\beta_M(E[R_m]-R_f)+\beta_{SMB}E[SMB]+\beta_{HML}E[HML] $$</div></p>
+<ul>
+<li><strong>SMB</strong>（Small−Big）规模因子；<strong>HML</strong>（High−Low）价值因子（高/低账面市值比）</li>
+</ul>
+<blockquote>
+<p>📌 呼应：<strong>EP（盈利市值比）正是 HML 所在的价值因子家族一员</strong>（BP/EP/SP/DP 同族，均为估值指标倒数）。</p>
+</blockquote>
+<h3>2.4 MVO 的三大实战修正</h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>说明</th>
+<th>解法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>估计误差</strong></td>
+<td>MVO 对输入极度敏感，权重剧变</td>
+<td>↓</td>
+</tr>
+<tr>
+<td><strong>Black-Litterman</strong></td>
+<td>市场均衡（CAPM）+ 主观观点 → 稳定配置</td>
+<td>收缩/贝叶斯思想落地</td>
+</tr>
+<tr>
+<td><strong>风险平价</strong></td>
+<td>各资产对总风险贡献相等</td>
+<td>更分散稳健（桥水全天候底座）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 呼应：BL 模型本质是<strong>收缩估计（MMSE 思路）</strong>——均衡做先验，观点做更新，按精度加权。MVO 之痛的根源又是 <span class="math-inline">$SE(\hat\mu)=\sigma/\sqrt T$</span>（第 2 篇 §8.3）。</p>
+</blockquote>
+<h2>三、随机模型应用箱</h2>
+<h3>3.1 OU 过程：均值回归标准件</h3>
+<p><div class="math-display">$$ \boxed{dX_t=\kappa(\theta-X_t)dt+\eta\,dW_t} $$</div></p>
+<p><span class="math-inline">$\theta$</span> 长期均值、<span class="math-inline">$\kappa$</span> 回归速度、<span class="math-inline">$\eta$</span> 噪声强度。<span class="math-inline">$X_t>\theta$</span> 时漂移为负（自动纠偏）。</p>
+<p><strong>解与半衰期</strong>（对 <span class="math-inline">$Y=X-\theta$</span> 用伊藤引理，取期望解 ODE）：</p>
+<p><div class="math-display">$$ E[X_{t+h}\mid X_t]=\theta+(X_t-\theta)e^{-\kappa h},\qquad \boxed{h_{1/2}=\frac{\ln2}{\kappa}} $$</div></p>
+<p>例：<span class="math-inline">$\kappa=8$</span>/年 ⇒ <span class="math-inline">$h_{1/2}\approx21.8$</span> 个交易日。⚠️ 是<strong>条件期望</strong>减半时间，≠ 某条路径的回归时间，≠ 首次触碰时间。平稳分布：<span class="math-inline">$N\big(\theta,\frac{\eta^2}{2\kappa}\big)$</span>。</p>
+<p><strong>与 AR(1) 回归对接</strong>（等间隔 <span class="math-inline">$\Delta$</span>）：</p>
+<p><div class="math-display">$$ X_{t+\Delta}=c+\phi X_t+\varepsilon,\qquad \phi=e^{-\kappa\Delta},\ c=\theta(1-\phi) $$</div></p>
+<p>OLS 回归估 <span class="math-inline">$\hat\phi$</span> ⇒ <span class="math-inline">$\hat\kappa=-\ln\hat\phi/\Delta$</span>——连续时间参数接到回归工具上。</p>
+<p><strong>配对交易三军规</strong>：① 高相关 ≠ 价差平稳（要检验价差本身）；② 样本外必须扣成本；③ OU 不管"回归到 θ 之前先爆仓"的风险（第 1 篇赌徒破产逻辑）。</p>
+<h3>3.2 Heston 随机波动率</h3>
+<p><div class="math-display">$$ dS_t=rS_tdt+\sqrt{v_t}\,S_t\,dW_t^S,\qquad dv_t=\kappa(\theta-v_t)dt+\xi\sqrt{v_t}\,dW_t^v,\qquad d[W^S,W^v]_t=\rho\,dt $$</div></p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="math-inline">$v_t$</span></td>
+<td>瞬时方差（方差方程本身是个 <strong>OU</strong> 过程）</td>
+</tr>
+<tr>
+<td><span class="math-inline">$\theta,\kappa,\xi$</span></td>
+<td>长期方差 / 回归速度 / vol-of-vol</td>
+</tr>
+<tr>
+<td><span class="math-inline">$\rho$</span></td>
+<td>价-方差冲击相关性（负 ρ ⇒ 偏斜）</td>
+</tr>
+</tbody>
+</table>
+<p>Feller 条件 <span class="math-inline">$2\kappa\theta\ge\xi^2$</span>：方差不触 0。用途：解释<strong>波动率微笑</strong>。</p>
+<blockquote>
+<p>⚠️ <strong>测度纪律</strong>：方差过程的漂移在 <span class="math-inline">$\mathbb P$</span>（历史数据估）与 <span class="math-inline">$\mathbb Q$</span>（期权市场校准）下一般不同——不能机械地把 <span class="math-inline">$\mu$</span> 换成 <span class="math-inline">$r$</span> 就完事。呼应：BP 检验查"误差方差是否随变量变"（异方差），Heston 直接给方差写演化方程。</p>
+</blockquote>
+<h3>3.3 ★ Merton 问题：Kelly 公式推导（呼应第 1 篇赌徒破产）</h3>
+<p>财富比例 <span class="math-inline">$\pi_t$</span> 投入 GBM 风险资产：<span class="math-inline">$\frac{dF_t}{F_t}=[r+\pi_t(\mu-r)]dt+\pi_t\sigma dW_t$</span>。对 <span class="math-inline">$\ln F$</span> 用伊藤引理：</p>
+<p><div class="math-display">$$ d\ln F_t=\Big[\underbrace{r+\pi_t(\mu-r)}_{\text{风险回报}}\underbrace{-\tfrac12\pi_t^2\sigma^2}_{\text{波动税（随 }\pi^2\text{ 增长）}}\Big]dt+\pi_t\sigma dW_t $$</div></p>
+<p>最大化漂移：<span class="math-inline">$(\mu-r)-\pi\sigma^2=0$</span> ⇒</p>
+<p><div class="math-display">$$ \boxed{\pi^*=\frac{\mu-r}{\sigma^2}}\qquad(\text{Kelly 公式，连续时间 / 对数效用}) $$</div></p>
+<p>自动平衡第 1 篇的"增长 vs 生存"：仓位小增长慢，仓位大波动税与破产风险指数上升。<strong>三条现实折扣</strong>：① <span class="math-inline">$\mu$</span> 估不准（<span class="math-inline">$SE=\sigma/\sqrt T$</span>）⇒ 有效仓位应小于 <span class="math-inline">$\pi^*$</span>；② 杠杆/回撤约束改变最优解；③ 非对数效用答案不同——<span class="math-inline">$\pi^*$</span> 是特定目标 + 特定模型下的解。</p>
+<blockquote>
+<p>💡 <strong>半凯利（Half Kelly）</strong>：实务常用 <span class="math-inline">$\pi^*/2$</span>——参数有估计误差时，牺牲少量增长速度换取波动与回撤的大幅下降。顶级宽客的共性不是模型最复杂，而是<strong>对估计误差保持敬畏</strong>：主动缩仓、主动简化模型（3 个核心特征而不是 30 个）、主动加约束。</p>
+</blockquote>
+<h3>3.4 时间序列速览（QR 面试加分区）</h3>
+<table>
+<thead>
+<tr>
+<th>对象</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AR(1)</td>
+<td><span class="math-inline">$X_t=c+\phi X_{t-1}+\epsilon_t$</span>，<span class="math-inline">$\lvert\phi\rvert<1$</span> 平稳；与 OU 的桥：<span class="math-inline">$\phi=e^{-\kappa\Delta}$</span>（见 3.1）</td>
+</tr>
+<tr>
+<td>ARMA</td>
+<td>AR（自回归）+ MA（误差滑动平均），平稳序列拟合标配</td>
+</tr>
+<tr>
+<td>平稳性</td>
+<td>均值/方差/自协方差不随时间变；<strong>ADF 单位根检验</strong></td>
+</tr>
+<tr>
+<td><strong>波动率聚集</strong></td>
+<td>"大波动跟着大波动"——收益率的经验事实</td>
+</tr>
+<tr>
+<td><strong>GARCH(1,1)</strong></td>
+<td><span class="math-inline">$\sigma_t^2=\omega+\alpha\epsilon_{t-1}^2+\beta\sigma_{t-1}^2$</span>；<span class="math-inline">$\alpha+\beta\to1$</span> = 高持续性；<strong>用 MLE 校准</strong></td>
+</tr>
+<tr>
+<td><strong>肥尾</strong></td>
+<td>真实收益尾部比正态厚（正态性检验被拒绝）；用 <strong>MLE 拟合 t 分布</strong>（呼应第 1 篇 §4.1）</td>
+</tr>
+</tbody>
+</table>
+<h3>3.5 风险度量与绩效指标</h3>
+<p><strong>VaR</strong>（在险价值）：损失分布的 α 分位数（95% VaR = 有 5% 概率被超过的损失）。三种算法：<strong>历史模拟 / 参数法（正态假设）/ 蒙特卡洛</strong>。</p>
+<p><strong>CVaR / ES</strong>（期望损失）：损失超过 VaR 部分的<strong>条件期望</strong>（尾部平均）；凸、满足一致性公理，监管与组合优化首选。</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>公式/含义</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sortino</td>
+<td>超额收益 / <strong>下行</strong>波动率</td>
+<td>只惩罚亏损方向的波动</td>
+</tr>
+<tr>
+<td>信息比率 IR</td>
+<td><span class="math-inline">$\alpha$</span>/跟踪误差</td>
+<td>度量相对基准的主动管理能力</td>
+</tr>
+<tr>
+<td>最大回撤</td>
+<td>峰到谷最大跌幅</td>
+<td>资本管理与破产风险（呼应第 1 篇赌徒破产）</td>
+</tr>
+<tr>
+<td>换手率</td>
+<td>仓位周转速度</td>
+<td>交易成本的代理变量</td>
+</tr>
+</tbody>
+</table>
+<h2>四、模拟与建模工作流</h2>
+<h3>4.1 模拟：三种误差分开记账</h3>
+<p>一般 SDE 用 <strong>Euler–Maruyama</strong>：<span class="math-inline">$X_{t+\Delta t}\approx X_t+a\,\Delta t+b\sqrt{\Delta t}\,Z$</span>（有精确解的过程直接精确抽样，如 GBM）。</p>
+<table>
+<thead>
+<tr>
+<th>误差</th>
+<th>来源</th>
+<th>缩小手段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抽样误差</td>
+<td>路径条数有限</td>
+<td>加次数（<span class="math-inline">$SE\propto1/\sqrt N$</span>）</td>
+</tr>
+<tr>
+<td>离散误差</td>
+<td>有限步长</td>
+<td>缩小 Δt（精确抽样则无）</td>
+</tr>
+<tr>
+<td>模型误差</td>
+<td>动态与真实不符</td>
+<td>换模型/检验——<strong>加路径数救不了</strong></td>
+</tr>
+</tbody>
+</table>
+<p>⚠️ 路径依赖支付（亚式/障碍期权）：离散网格监控 ≠ 连续监控，障碍可能在网格间被触碰，需专门修正。<strong>定价在 <span class="math-inline">$\mathbb Q$</span> 下模拟；风险模拟（损益分布）在 <span class="math-inline">$\mathbb P$</span> 下</strong>——用错测度是新手事故高发区。</p>
+<h3>4.2 ★ 六步建模工作流</h3>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 选状态变量</td>
+<td>价格、对数价格、价差还是方差？</td>
+</tr>
+<tr>
+<td>② 选动态</td>
+<td>比例波动（GBM）/ 均值回归（OU）/ 随机波动率（Heston）/ 跳跃？</td>
+</tr>
+<tr>
+<td>③ 估参数</td>
+<td>哪些用历史数据（<span class="math-inline">$\mathbb P$</span>），哪些用期权市场校准（<span class="math-inline">$\mathbb Q$</span>）？</td>
+</tr>
+<tr>
+<td>④ 检查模型</td>
+<td>残差、分布、波动率、稳定性符合假设吗？</td>
+</tr>
+<tr>
+<td>⑤ 计算目标</td>
+<td>定价、对冲误差、损益分布还是交易决策？</td>
+</tr>
+<tr>
+<td>⑥ 样本外评估</td>
+<td>新数据 + 真实成本下成立吗？</td>
+</tr>
+</tbody>
+</table>
+<p>两条提醒：<strong>μ 与 σ 的采样不对称</strong>（加密采样改进 σ 估计，对 μ 无用）；现实市场有跳跃、波动率聚集、摩擦——<strong>模型选择由研究目标和数据支持决定，不是"模拟路径像不像股价"</strong>。</p>
+<h2>五、自测清单（必须掌握的考点）</h2>
+<ul>
+<li>☐ A-S 模型两个公式 + 库存偏移方向</li>
+<li>☐ 逆向选择账本与"速度赢两次"</li>
+<li>☐ 两资产方差公式 + 分散化看 ρ</li>
+<li>☐ CAPM/APT/FF3 各自公式，APT 与 CAPM 的关键区别，SMB/HML 含义</li>
+<li>☐ MVO 怕什么，BL 和风险平价怎么救</li>
+<li>☐ OU：半衰期公式、AR(1) 映射、三条军规</li>
+<li>☐ Heston 参数含义 + Feller 条件 + P/Q 参数区分</li>
+<li>☐ Kelly 推导（伊藤引理 → 漂移最大化）+ 三条现实折扣 + 半凯利的理由</li>
+<li>☐ GARCH(1,1) 公式与波动率聚集；肥尾用 t-MLE</li>
+<li>☐ VaR/CVaR 定义与三种算法；Sortino/IR 与 Sharpe 的区别</li>
+<li>☐ 三种模拟误差、Q/P 测度分工、六步工作流</li>
+</ul>
+<h2>六、30 秒速查总表</h2>
+<table>
+<thead>
+<tr>
+<th>考点</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A-S 保留价</td>
+<td><span class="math-inline">$r=s-q\gamma\sigma^2(T-t)$</span>：库存越多报价越偏</td>
+</tr>
+<tr>
+<td>A-S 价差</td>
+<td><span class="math-inline">$\delta=\frac2\gamma\ln(1+\frac\gamma\kappa)+\gamma\sigma^2(T-t)$</span></td>
+</tr>
+<tr>
+<td>组合方差</td>
+<td><span class="math-inline">$w^2\sigma_1^2+(1-w)^2\sigma_2^2+2w(1-w)\rho\sigma_1\sigma_2$</span></td>
+</tr>
+<tr>
+<td>CAPM</td>
+<td><span class="math-inline">$E[R_i]=R_f+\beta_i(E[R_m]-R_f)$</span>；α = 回归截距</td>
+</tr>
+<tr>
+<td>FF3</td>
+<td>市场 + SMB（规模）+ HML（价值，EP 的学术源头）</td>
+</tr>
+<tr>
+<td>MVO 三坑</td>
+<td>估计误差 → BL（收缩）→ 风险平价</td>
+</tr>
+<tr>
+<td>OU 半衰期</td>
+<td><span class="math-inline">$\ln2/\kappa$</span>；AR(1)：<span class="math-inline">$\phi=e^{-\kappa\Delta}$</span></td>
+</tr>
+<tr>
+<td>Heston</td>
+<td>方差 OU + Feller <span class="math-inline">$2\kappa\theta\ge\xi^2$</span>；解释微笑</td>
+</tr>
+<tr>
+<td>Kelly</td>
+<td><span class="math-inline">$\pi^*=\frac{\mu-r}{\sigma^2}$</span>：回报线性 vs 波动税平方；实务用半凯利</td>
+</tr>
+<tr>
+<td>GARCH(1,1)</td>
+<td><span class="math-inline">$\sigma_t^2=\omega+\alpha\epsilon_{t-1}^2+\beta\sigma_{t-1}^2$</span>（波动率聚集）</td>
+</tr>
+<tr>
+<td>VaR / CVaR</td>
+<td>损失分位数 / 超 VaR 的尾部均值；历史/参数/蒙特卡洛三算法</td>
+</tr>
+<tr>
+<td>工作流</td>
+<td>选变量 → 定动态 → 估参数 → 检查 → 算目标 → 样本外</td>
+</tr>
+</tbody>
+</table>
+<p><em>框架参考：OpenQuant《Quant Interview Study Guide》；Avellaneda &amp; Stoikov (2008)；Gatheral《The Volatility Surface》；Merton (1971)。</em><br />
+<em>系列导航：[00 总目录] → [01 概率与统计] → [02 随机微积分与股价模型] → [03 衍生品定价与 BSM] → [04 机器学习与深度学习] → [05 线性代数与微积分] → [06 金融专题] → </em><em>[07 预测市场与二元合约（补充篇）]</em>**</p>
+</article>
+<div class="pager-row"><a class="pager prev" href="05.html">← 线性代数与微积分</a><a class="pager next" href="07.html">预测市场与二元合约 →</a></div>
+<footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>
+</main>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.querySelector("article"), {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>

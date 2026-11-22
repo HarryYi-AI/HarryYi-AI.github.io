@@ -23,11 +23,13 @@
 </aside>
 <main class="content">
 <article>
-<h1>Quant 面试复习手册 · 总目录与快速通道</h1>
+<h1>Quant 面试复习手册 00｜总目录与快速通道</h1>
 <blockquote>
-<p>6 篇主干 + 1 篇补充，自足式复习手册（框架参考 OpenQuant《Quant Interview Study Guide》+ 主流面试考点清单 + Mr.RC 两篇 X 长文深化）。<br />
-定位：<strong>面试前快速查看 + 日常复习记忆</strong>。每篇末尾都有「自测清单」和「30 秒速查总表」。</p>
+<p>📌 Quant 面试复习手册 · 第 0 篇（总目录）<br />
+6 篇主干 + 1 篇补充，完整讲解版。框架参考 OpenQuant《Quant Interview Study Guide》+ 主流面试考点清单 + Mr.RC 两篇 X 长文深化。<br />
+定位：<strong>面试前快速查看 + 日常系统学习</strong>。每篇末尾都有「自测清单」和「30 秒速查总表」。</p>
 </blockquote>
+<hr />
 <h2>一、目录</h2>
 <table>
 <thead>
@@ -41,63 +43,57 @@
 <tbody>
 <tr>
 <td>01</td>
-<td>概率与统计</td>
-<td>八大分布、Bayes/全期望/全方差、CLT/LLN、<strong>MLE/假设检验/多重比较</strong>、马尔可夫链、赌徒破产完整推导</td>
+<td><a href="01.html">概率与统计</a></td>
+<td>八大分布、Bayes/全期望/全方差、CLT/LLN、MLE/假设检验/多重比较、马尔可夫链、赌徒破产完整推导</td>
 <td>分布速查表、<span class="math-inline">$\rho^a$</span> 破产公式、Bonferroni</td>
 </tr>
 <tr>
 <td>02</td>
-<td>随机微积分与股价模型</td>
+<td><a href="02.html">随机微积分与股价模型</a></td>
 <td>布朗运动、SDE、伊藤积分、二次变差、伊藤引理证明骨架、GBM 求解</td>
-<td><span class="math-inline">$\sqrt t$</span> 标度律、<span class="math-inline">$(dW)^2=dt$</span> 证明、GBM 精确解</td>
+<td>√t 标度律、<span class="math-inline">$(dW)^2=dt$</span> 证明、GBM 精确解</td>
 </tr>
 <tr>
 <td>03</td>
-<td>衍生品定价与 BSM</td>
-<td>Put-Call 平价、复制与 BS-PDE、Greeks、风险中性定价、BSM 完整推导、蒙特卡洛、<strong>二叉树/数字期权/远期定价</strong></td>
-<td>BS-PDE、<span class="math-inline">$C=S\Phi(d_1)-Ke^{-r\tau}\Phi(d_2)$</span>、数字期权 <span class="math-inline">$=e^{-r\tau}\Phi(d_2)$</span></td>
+<td><a href="03.html">衍生品定价与 BSM</a></td>
+<td>Put-Call 平价、二叉树、复制与 BS-PDE、Greeks、风险中性定价、BSM 完整推导、蒙特卡洛、数字期权/远期</td>
+<td>BS-PDE、<span class="math-inline">$C=S\Phi(d_1)-Ke^{-r\tau}\Phi(d_2)$</span>、<span class="math-inline">$d_1/d_2$</span> 来历</td>
 </tr>
 <tr>
 <td>04</td>
-<td>机器学习与深度学习</td>
-<td>线性回归（Gauss-Markov）、分类指标、树方法、神经网络、LLM</td>
+<td><a href="04.html">机器学习与深度学习</a></td>
+<td>线性回归（Gauss-Markov/正则化）、分类模型与指标、树方法、神经网络、LLM</td>
 <td>五假设表、偏差-方差分解、Bagging vs Boosting</td>
 </tr>
 <tr>
 <td>05</td>
-<td>线性代数与微积分</td>
-<td>矩阵恒等式、PSD、五大分解、投影、<strong>PCA 金融应用、凸优化</strong>、求导/积分/泰勒/求和</td>
-<td>trace/det=特征值摘要、Cholesky 采样、OLS=投影、第一主成分≈市场</td>
+<td><a href="05.html">线性代数与微积分</a></td>
+<td>矩阵恒等式、PSD、五大分解、投影、PCA/凸优化、求导/积分/泰勒/求和</td>
+<td>trace/det=特征值摘要、Cholesky 采样、OLS=投影</td>
 </tr>
 <tr>
 <td>06</td>
-<td>金融专题</td>
-<td>做市（A-S 模型）、组合理论（CAPM/APT/FF3/BL）、OU、Heston、Kelly 推导、<strong>时间序列/GARCH、VaR/CVaR、半凯利</strong>、六步工作流</td>
-<td><span class="math-inline">$r=s-q\gamma\sigma^2(T-t)$</span>、<span class="math-inline">$\pi^*=\frac{\mu-r}{\sigma^2}$</span>、GARCH(1,1)</td>
+<td><a href="06.html">金融专题：做市、组合与建模</a></td>
+<td>A-S 做市、MVO/CAPM/APT/FF3、OU、Heston、Kelly 推导、GARCH/VaR/半凯利、六步工作流</td>
+<td>保留价公式、<span class="math-inline">$\pi^*=\frac{\mu-r}{\sigma^2}$</span>、GARCH(1,1)</td>
 </tr>
 <tr>
 <td>07</td>
-<td>预测市场与二元合约（补充篇）</td>
-<td>logit 空间建模、<span class="math-inline">$p(1-p)$</span> 万能因子、信念波动率与跳跃扩散、logit 版 A-S、<strong>LMSR=Softmax</strong>、Kalman/EM 校准</td>
+<td><a href="07.html">预测市场与二元合约</a>（补充篇）</td>
+<td>logit 建模、p(1-p) 万能因子、信念波动率与跳跃扩散、logit 版 A-S、LMSR=Softmax、Kalman/EM 校准</td>
 <td><span class="math-inline">$x=\ln\frac{p}{1-p}$</span>、鞅锁定漂移、LMSR vs CLOB</td>
 </tr>
 </tbody>
 </table>
+<hr />
 <h2>二、面试前快速通道（按剩余时间）</h2>
-<h3>⏱ 只剩 30 分钟</h3>
-<p>只看每篇末尾的「30 秒速查总表」（7 张表过一遍），重点卡壳处回翻对应小节。</p>
-<h3>⏱ 只剩一晚（约 2.5–3.5 小时）</h3>
-<ol>
-<li>每篇过一遍正文，并逐条完成自测清单（约 20 分钟/篇）</li>
-<li>优先级：<strong>01 → 03 → 02 → 04 → 06 → 05 → 07</strong>（概率与定价是出现率最高的两块；07 是补充篇，面试预测市场相关岗位才必看）</li>
-</ol>
-<h3>⏱ 三个准备日</h3>
-<ul>
-<li>Day 1：01 + 02（数学地基：分布、定理、统计推断、马尔可夫链、伊藤引理、GBM）</li>
-<li>Day 2：03 + 04（定价主线 + 机器学习）</li>
-<li>Day 3：05 + 06 + 07（速查类 + 金融专题 + 预测市场），并把速查总表抄写一遍</li>
-</ul>
-<h3>🎯 按岗位侧重</h3>
+<p><strong>只剩 30 分钟</strong>：只看每篇末尾的「30 秒速查总表」（7 张表过一遍），卡壳处回翻对应小节。</p>
+<p><strong>只剩一晚（2.5–3.5 小时）</strong>：每篇过一遍正文 + 自测清单逐条完成（约 20 分钟/篇）。优先级：<strong>01 → 03 → 02 → 04 → 06 → 05 → 07</strong>（概率与定价是出现率最高的两块；07 为补充篇，面预测市场岗必看）。</p>
+<p><strong>三个准备日</strong>：<br />
+- Day 1：01 + 02（数学地基：分布、统计推断、马尔可夫链、伊藤引理、GBM）<br />
+- Day 2：03 + 04（定价主线 + 机器学习）<br />
+- Day 3：05 + 06 + 07（速查类 + 金融专题 + 预测市场），速查总表抄写一遍</p>
+<p><strong>按岗位侧重</strong>：</p>
 <table>
 <thead>
 <tr>
@@ -108,45 +104,54 @@
 <tbody>
 <tr>
 <td>Quant Researcher</td>
-<td>01、02、03、04、06（尤其统计推断、回归假设、时间序列）</td>
+<td>01、02、03、04、06（统计推断、回归假设、时间序列）</td>
 </tr>
 <tr>
 <td>Quant Trader</td>
-<td>01、03、06、07（概率反应题、定价直觉、做市与组合、预测市场机制）</td>
+<td>01、03、06、07（概率反应题、定价直觉、做市与组合、预测市场）</td>
 </tr>
 <tr>
 <td>Quant Developer</td>
 <td>02、04、05（工程实现、模拟代码、矩阵计算）</td>
 </tr>
 <tr>
-<td>预测市场/加密交易</td>
+<td>预测市场 / 加密交易</td>
 <td>06 做市部分 + 07 全篇</td>
 </tr>
 </tbody>
 </table>
-<h2>三、跨篇概念索引（一图串线）</h2>
+<hr />
+<h2>三、跨篇概念索引（一条线串起七篇）</h2>
 <p><div class="math-display">$$ \boxed{
-\text{股价模型}
-\xrightarrow{\text{伊藤引理}}
-\text{函数的动态}
-\xrightarrow{\text{复制与无套利}}
-\text{定价方程}
-\xrightarrow{\text{风险中性期望}}
-\text{BSM 公式}
+\underbrace{\text{股价模型}}_{\text{02}}
+\xrightarrow{\ \text{伊藤引理}\ }
+\underbrace{\text{函数的动态}}_{\text{02}}
+\xrightarrow{\ \text{复制与无套利}\ }
+\underbrace{\text{定价方程}}_{\text{03}}
+\xrightarrow{\ \text{风险中性期望}\ }
+\underbrace{\text{BSM 公式}}_{\text{03}}
 } $$</div></p>
 <p>高频交叉考点（容易被连环追问的主线）：</p>
 <ul>
-<li><strong>√t 标度律</strong>（02）→ 波动率年化 → <strong><span class="math-inline">$SE(\hat\mu)=\sigma/\sqrt T$</span></strong>（02/06）→ MVO 估计误差与 <strong>BL 收缩/半凯利</strong>（06）</li>
+<li><strong>√t 标度律</strong>（02）→ 波动率年化 → <span class="math-inline">$SE(\hat\mu)=\sigma/\sqrt T$</span>（02）→ MVO 估计误差 → <strong>BL 收缩 / 半凯利</strong>（06）</li>
 <li><strong>二次变差</strong>（02）→ 伊藤修正项 → <strong><span class="math-inline">$-\frac12\sigma^2$</span></strong>（02）→ 对数正态均值 vs 中位数（02）</li>
-<li><strong>指数鞅</strong>（02）→ 折现价是 Q-鞅（03）→ <strong>赌徒破产的指数鞅法</strong>（01）→ <strong>logit 空间鞅锁定漂移</strong>（07）</li>
-<li><strong>赌徒破产</strong>（01）→ 生存 vs 期望 → <strong>Kelly 公式/半凯利</strong>（06）</li>
+<li><strong>指数鞅</strong>（02）→ 折现价是 Q-鞅（03）→ <strong>赌徒破产指数鞅法</strong>（01）→ <strong>logit 空间鞅锁定漂移</strong>（07）</li>
+<li><strong>赌徒破产</strong>（01）→ 生存 vs 期望 → <strong>Kelly 公式 / 半凯利</strong>（06）</li>
 <li><strong>Φ(d₂)=Q 实值概率</strong>（03）→ <strong>数字期权定价</strong>（03）→ <strong>预测市场合约</strong>（07）</li>
 <li><strong>HML 价值因子</strong>（06）→ <strong>EP/BP 低估值因子族</strong></li>
 <li><strong>做市逆向选择</strong>（06）→ 价差作为逆向选择补偿 → <strong>CLOB 下做市商是生命线</strong>（07）</li>
 <li><strong>MLE 校准</strong>（01）→ GARCH/t 分布拟合（06）→ <strong>Kalman/EM 参数提取</strong>（07）</li>
 <li><strong>多重比较</strong>（01）→ 回测过拟合 → 换手率与交易成本（06）</li>
 </ul>
-<p><em>来源：openquant.co/guide（主框架）+ 主流面试考点清单（150 Most Frequently Asked Questions on Quant Interviews 等）+ Mr.RC X 长文两篇（知识地图/预测市场做市，底层论文 Shaw "Toward Black-Scholes for Prediction Markets"）+ 随机微积分讲义（Columbia mh2078、MIT 18.642、NYU；Shreve、Øksendal、Björk、Gatheral、Hull）。</em></p>
+<hr />
+<h2>四、排版与更新说明</h2>
+<ul>
+<li>每篇结构固定：考点覆盖 → 正文（直觉 → 公式 → 完整推导 → 例题 → 易错点）→ 自测清单 → 30 秒速查总表</li>
+<li>「自测清单」列出该篇必须掌握的考点，逐条自检即可查漏补缺</li>
+<li>源文件为 Markdown，修改后重新生成站点即可更新（无需触碰排版）</li>
+</ul>
+<hr />
+<p><em>来源：openquant.co/guide（主框架）+ 主流面试考点清单 + Mr.RC 两篇 X 长文 + Columbia/MIT/NYU 随机微积分讲义（Shreve、Øksendal、Björk、Gatheral、Hull）。</em></p>
 </article>
 <div class="pager-row"><a class="pager next" href="01.html">概率与统计 →</a></div>
 <footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>

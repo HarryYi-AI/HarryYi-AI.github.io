@@ -23,58 +23,157 @@
 </aside>
 <main class="content">
 <article>
-<h1>Quant 面试复习手册 03｜衍生品定价与 BSM：复制 → PDE → 风险中性 → 公式</h1>
+<h1>Quant 面试复习手册 03｜衍生品定价与 BSM（完整讲解版）：复制 → PDE → 风险中性 → 公式</h1>
 <blockquote>
-<p>📌 <strong>Quant 面试复习手册 · 第 3 篇 / 共 7 篇</strong>（总目录）<br />
-本篇覆盖：Put-Call 平价 → 复制对冲与 BS-PDE → Greeks → 风险中性定价 → BSM 公式完整推导 → 蒙特卡洛验收 → 进阶概念。<br />
-前置：第 2 篇（伊藤引理、GBM 精确解、指数鞅）。</p>
+<p>📌 Quant 面试复习手册 · 第 3 篇 / 共 7 篇<br />
+本篇回答一个核心问题：<strong>一个关于股价的随机方程，凭什么能变成一个不含任何预测的封闭定价公式？</strong> 完整走一遍：Put-Call 平价 → 二叉树 → 复制与 BS-PDE → 风险中性测度 → BSM 公式逐行推导 → 蒙特卡洛验证。<br />
+前置：第 2 篇（布朗运动、伊藤引理、GBM 精确解、指数鞅）。</p>
 </blockquote>
 <p>主线逻辑链（本篇覆盖后半段）：</p>
 <p><div class="math-display">$$ \boxed{
-\text{股价模型}
-\xrightarrow{\text{伊藤引理}}
-\text{函数的动态}
+\underbrace{\text{股价模型}}_{\text{第 1 篇}}
+\xrightarrow{\ \text{伊藤引理（第 2 篇）}\ }
+\underbrace{\text{函数的动态}\ \checkmark}_{\text{第 2 篇}}
 \xrightarrow{\ \text{复制与无套利}\ }
-\text{定价方程}
+\underbrace{\text{定价方程}}_{\text{本篇}}
 \xrightarrow{\ \text{风险中性期望}\ }
-\text{BSM 公式}
+\underbrace{\text{BSM 公式}}_{\text{本篇终点}}
 } $$</div></p>
-<h2>一、期权基础与 Put-Call 平价</h2>
+<hr />
+<h2>1. 期权基础与 Put-Call 平价</h2>
+<h3>1.1 基本合约</h3>
 <ul>
-<li>看涨 Call：到期支付 <span class="math-inline">$\max(S_T-K,0)$</span>；看跌 Put：<span class="math-inline">$\max(K-S_T,0)$</span>；贴现因子 <span class="math-inline">$e^{-rT}$</span></li>
-<li><strong>Put-Call 平价</strong>（无套利恒等式，任何偏离 = 套利机会）：</li>
+<li><strong>看涨期权 Call</strong>：到期支付 <span class="math-inline">$\max(S_T-K,0)$</span>——有权以行权价 K 买入</li>
+<li><strong>看跌期权 Put</strong>：到期支付 <span class="math-inline">$\max(K-S_T,0)$</span>——有权以行权价 K 卖出</li>
+<li>欧式：只能到期行权；美式：到期前任意时刻可行权</li>
+<li>贴现因子：T 时刻的 1 元今天值 <span class="math-inline">$e^{-rT}$</span>（连续复利）</li>
 </ul>
+<h3>1.2 ★ Put-Call 平价（无套利恒等式）</h3>
 <p><div class="math-display">$$ \boxed{C+Ke^{-rT}=P+S} $$</div></p>
-<p>（左边 = 买 Call + 面值 K 的零息债；右边 = 买 Put + 买正股。）</p>
-<h2>二、复制与对冲：μ 为什么消失</h2>
-<h3>2.1 起点：伊藤展开</h3>
-<p>衍生品价格 <span class="math-inline">$V(S,t)$</span>，GBM 下（<span class="math-inline">$a=\mu S,\ b=\sigma S$</span>）：</p>
-<p><div class="math-display">$$ dV=\Big(V_t+\mu SV_S+\tfrac12\sigma^2S^2V_{SS}\Big)dt+\sigma SV_S\,dW_t\tag{$\ast$} $$</div></p>
-<p>盯住随机项：<strong>期权与股票受同一个 <span class="math-inline">$dW_t$</span> 驱动</strong> ⇒ 风险可用股票剥离。</p>
-<h3>2.2 推导 A：对冲组合"局部无风险"版</h3>
-<p>组合 <span class="math-inline">$\Pi=V-V_S\cdot S$</span>（卖 1 份衍生品 + 持 <span class="math-inline">$V_S$</span> 股）：</p>
-<p><div class="math-display">$$ d\Pi=dV-V_S\,dS=\Big(V_t+\tfrac12\sigma^2S^2V_{SS}\Big)dt $$</div></p>
-<p>（<span class="math-inline">$\mu SV_S$</span> 相消，随机项精确抵消。）无风险组合必须赚 <span class="math-inline">$r$</span>（无套利）：</p>
-<p><div class="math-display">$$ V_t+\tfrac12\sigma^2S^2V_{SS}=r(V-SV_S)\;\Longrightarrow\;\boxed{V_t+rSV_S+\tfrac12\sigma^2S^2V_{SS}-rV=0} $$</div></p>
-<p>—— <strong>Black–Scholes PDE</strong>，配到期支付条件 <span class="math-inline">$V(S,T)=(S-K)^+$</span> 唯一解。</p>
-<h3>2.3 推导 B：自融资复制版</h3>
-<p>持有 <span class="math-inline">$\Delta=V_S$</span> 股 + 现金 <span class="math-inline">$V-SV_S$</span>（自融资：调仓资金来自组合内部）：</p>
-<p><div class="math-display">$$ dV=V_S\,dS+r(V-SV_S)\,dt $$</div></p>
-<p>与 <span class="math-inline">$(\ast)$</span> 逐项比较：随机项自动匹配；漂移项 <span class="math-inline">$\mu SV_S$</span> <strong>两边相消</strong>，得同一 PDE。</p>
-<h3>2.4 μ 消失的三层原因</h3>
-<ol>
-<li><strong>噪声同源 ⇒ 风险可剥离</strong>（同一 <span class="math-inline">$dW_t$</span>）</li>
-<li>对冲后只剩确定性现金流，无套利强制其收益率 = <span class="math-inline">$r$</span>——<strong>无需任何预测</strong></li>
-<li>复制成本与偏好无关 ⇒ <strong>同一个东西不能有两种价格</strong></li>
-</ol>
-<blockquote>
-<p>💡 <strong>μ 没有被忽略，而是被对冲掉了。</strong> 复制成本不需要预测股票的真实平均涨幅。</p>
-</blockquote>
-<h3>2.5 假设 vs 现实</h3>
+<p><strong>套利论证</strong>（不是背公式，是理解为什么必然成立）：</p>
+<ul>
+<li>
+<p>左边组合 = 买一份 Call + 买一张面值 K 的零息债。到期时：若 <span class="math-inline">$S_T>K$</span>，行权买股，总资产 = 1 股股票；若 <span class="math-inline">$S_T\le K$</span>，拿债的本金 K——总资产 = K。即到期资产 <span class="math-inline">$=\max(S_T,K)\ge\max(S_T-K,0)$</span> 与 0 的搭配……更直接的对照：</p>
+</li>
+<li>
+<p>右边组合 = 买一份 Put + 买一股股票。到期：<span class="math-inline">$S_T>K$</span> 时 = 一股股票（价值 <span class="math-inline">$S_T$</span>）；<span class="math-inline">$S_T\le K$</span> 时行权卖出得 K。</p>
+</li>
+</ul>
+<p>两个组合到期价值<strong>完全相同</strong>（都等于 <span class="math-inline">$\max(S_T,K)$</span>）：</p>
 <table>
 <thead>
 <tr>
-<th>假设</th>
+<th>状态</th>
+<th>左边（Call+债）</th>
+<th>右边（Put+股）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="math-inline">$S_T>K$</span></td>
+<td><span class="math-inline">$(S_T-K)+K=S_T$</span></td>
+<td><span class="math-inline">$S_T$</span></td>
+</tr>
+<tr>
+<td><span class="math-inline">$S_T\le K$</span></td>
+<td><span class="math-inline">$K$</span></td>
+<td><span class="math-inline">$K$</span></td>
+</tr>
+</tbody>
+</table>
+<p>到期收益相同 ⇒ 今天的价格必须相同（否则买便宜的卖贵的，零风险赚差价）。这就是无套利定价的原型：<strong>同收益 ⇒ 同价格</strong>。</p>
+<hr />
+<h2>2. 二叉树定价（CRR）：离散版的完整推导</h2>
+<p>连续的 BSM 之前，先在离散世界把逻辑走通——二叉树是理解"风险中性概率从哪来"的最短路径。</p>
+<h3>2.1 一步二叉树</h3>
+<p>Δt 后股价只有两个去向：<span class="math-inline">$uS$</span>（涨）或 <span class="math-inline">$dS$</span>（跌）。CRR 参数化取 <span class="math-inline">$u=e^{\sigma\sqrt{\Delta t}},\ d=1/u$</span>（让树匹配波动率）。</p>
+<p><strong>无套利条件</strong>：股票的期望涨幅必须等于无风险利率（否则借现金买股票的杠杆组合稳赚），由此解出<strong>风险中性概率</strong>：</p>
+<p><div class="math-display">$$ \boxed{p=\frac{e^{r\Delta t}-d}{u-d}} $$</div></p>
+<p>这个 p <strong>不是真实上涨概率</strong>，它只是让"股票折现期望 = 现价"成立的权重。</p>
+<p><strong>倒向定价</strong>：期权价值 = 风险中性期望的贴现：</p>
+<p><div class="math-display">$$ C=e^{-r\Delta t}\big[pC_u+(1-p)C_d\big] $$</div></p>
+<h3>2.2 多步树与收敛</h3>
+<p>n 步后价格 = 二项分布加权的贴现；n→∞ 时二项收敛到对数正态（第 1 篇分布加法 + CLT），树价格收敛到 BSM 公式——<strong>离散与连续两个世界由此接轨</strong>。</p>
+<p><strong>美式期权的标准数值解法</strong>：在每个节点取</p>
+<p><div class="math-display">$$ V_{node}=\max\big(\text{持有价值（继续倒推）},\ \text{立即行权价值}\big) $$</div></p>
+<p>这就是"美式不能写成一个期望"的工程答案：提前行权是停时最优化，二叉树上做<strong>倒向递推（backward induction）</strong>即可数值求解。</p>
+<hr />
+<h2>3. 连续时间：复制与 Black–Scholes PDE</h2>
+<h3>3.1 起点：伊藤展开</h3>
+<p>衍生品价格是股价和时间的函数 <span class="math-inline">$V(S,t)$</span>。第 2 篇伊藤引理（GBM 代入 <span class="math-inline">$a=\mu S,\ b=\sigma S$</span>）：</p>
+<p><div class="math-display">$$ dV=\Big(V_t+\mu SV_S+\tfrac12\sigma^2S^2V_{SS}\Big)dt+\sigma SV_S\,dW_t\tag{$\ast$} $$</div></p>
+<p><strong>盯住随机项</strong>：期权与股票受<strong>同一个</strong> <span class="math-inline">$dW_t$</span> 驱动（系数分别为 <span class="math-inline">$\sigma SV_S$</span> 与 <span class="math-inline">$\sigma S$</span>）。既然噪声同源，就可以用股票精确对冲掉期权的风险——这是后面一切的杠杆。</p>
+<h3>3.2 推导 A：对冲组合"局部无风险"版</h3>
+<p>构造组合：卖 1 份衍生品 + 持有 <span class="math-inline">$\Delta=V_S$</span> 股股票，组合价值：</p>
+<p><div class="math-display">$$ \Pi=V-V_S\cdot S $$</div></p>
+<p>对 <span class="math-inline">$\Pi$</span> 求微分（用 <span class="math-inline">$(\ast)$</span> 与 <span class="math-inline">$dS=\mu Sdt+\sigma SdW_t$</span>）：</p>
+<p><div class="math-display">$$ d\Pi=dV-V_S\,dS=\Big(V_t+\mu SV_S+\tfrac12\sigma^2S^2V_{SS}-V_S\mu S\Big)dt+\underbrace{\big(\sigma SV_S-\sigma SV_S\big)dW_t}_{=0} $$</div></p>
+<p>μSV_S 相消、随机项精确抵消，剩下纯 dt 项——<strong>组合在无穷小时间步内无风险</strong>。无风险组合必须赚无风险利率 r（否则存在无风险套利）：</p>
+<p><div class="math-display">$$ V_t+\tfrac12\sigma^2S^2V_{SS}=r(V-SV_S) $$</div></p>
+<p><div class="math-display">$$ \boxed{V_t+rSV_S+\tfrac12\sigma^2S^2V_{SS}-rV=0}\qquad\text{——Black–Scholes PDE} $$</div></p>
+<p>配到期支付条件 <span class="math-inline">$V(S,T)=(S-K)^+$</span>，价格唯一确定。</p>
+<h3>3.3 推导 B：自融资复制版（工程视角）</h3>
+<p>构造：持有 <span class="math-inline">$\Delta=V_S$</span> 股股票 + 现金头寸 <span class="math-inline">$V-SV_S$</span>（存银行生息）。<strong>自融资</strong> = 调仓资金全部来自组合内部（不加钱不取钱）。要求组合价值恒等于 V，则收益恒等式：</p>
+<p><div class="math-display">$$ dV=V_S\,dS+r(V-SV_S)\,dt $$</div></p>
+<p>展开与 <span class="math-inline">$(\ast)$</span> 比较：随机项两边天然相同（这正是 <span class="math-inline">$\Delta=V_S$</span> 的来源），漂移项中 <span class="math-inline">$\mu SV_S$</span> <strong>两边同时出现、相消</strong>，同样得到 BS-PDE。</p>
+<h3>3.4 μ 为什么消失（三层理解）</h3>
+<ol>
+<li><strong>噪声同源 ⇒ 风险可剥离</strong>：期权的不确定性完全来自 <span class="math-inline">$dW_t$</span>，股票是现成的风险载体，<span class="math-inline">$\Delta=V_S$</span> 股就能精确抵消</li>
+<li><strong>对冲后只剩确定性现金流</strong>：无套利强制其收益率 = r——这里没有任何"对未来的预测"</li>
+<li><strong>复制成本与偏好无关</strong>：无论你预期 μ=5% 还是 15%，复制同一个 payoff 的成本都一样——<strong>同一个东西不能有两种价格</strong></li>
+</ol>
+<blockquote>
+<p>【记忆】<strong>μ 没有被忽略，而是被对冲掉了。复制成本不需要预测股票的真实平均涨幅——这就是为什么一个看多方和一个看空方能在同一个期权价格上成交：他们交易的是波动率，不是方向。</strong></p>
+</blockquote>
+<h3>3.5 Greeks：伊藤引理的偏导</h3>
+<table>
+<thead>
+<tr>
+<th>Greek</th>
+<th>定义</th>
+<th>解读</th>
+<th>对冲用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Delta</strong> <span class="math-inline">$\Delta=V_S$</span></td>
+<td><span class="math-inline">$\partial V/\partial S$</span></td>
+<td>标的动 1，期权动多少</td>
+<td>主对冲工具：Delta 中性</td>
+</tr>
+<tr>
+<td><strong>Gamma</strong> <span class="math-inline">$\Gamma=V_{SS}$</span></td>
+<td><span class="math-inline">$\partial^2V/\partial S^2$</span></td>
+<td>Delta 的变化率</td>
+<td>高 Γ ⇒ 对冲需频繁再平衡</td>
+</tr>
+<tr>
+<td><strong>Theta</strong> <span class="math-inline">$\Theta=V_t$</span></td>
+<td><span class="math-inline">$\partial V/\partial t$</span></td>
+<td>时间衰减</td>
+<td>由 PDE 反解：<span class="math-inline">$\Theta=rV-rS\Delta-\tfrac12\sigma^2S^2\Gamma$</span></td>
+</tr>
+<tr>
+<td><strong>Vega</strong></td>
+<td><span class="math-inline">$\partial V/\partial\sigma$</span></td>
+<td>波动率敏感度</td>
+<td>对冲隐波变化</td>
+</tr>
+<tr>
+<td><strong>Rho</strong></td>
+<td><span class="math-inline">$\partial V/\partial r$</span></td>
+<td>利率敏感度</td>
+<td>长期限期权才显著</td>
+</tr>
+</tbody>
+</table>
+<p>Greeks 不是额外的知识点——它们就是伊藤引理里各阶偏导的名字。Γ 大 ⇔ PDE 中 <span class="math-inline">$\frac12\sigma^2S^2\Gamma$</span> 项大 ⇔ Delta 变化快 ⇔ 对冲要频繁重做，全部自洽。</p>
+<h3>3.6 假设与现实</h3>
+<table>
+<thead>
+<tr>
+<th>BSM 假设</th>
 <th>现实</th>
 <th>后果</th>
 </tr>
@@ -87,74 +186,30 @@
 </tr>
 <tr>
 <td>无交易成本</td>
-<td>有</td>
+<td>有点差/手续费</td>
 <td>高频再平衡成本侵蚀</td>
 </tr>
 <tr>
 <td>σ 常数</td>
-<td>隐波随行权价/期限变化（微笑）</td>
-<td>需随机波动率模型（第 6 篇）</td>
+<td>隐含波动率随行权价/期限变化</td>
+<td>波动率微笑 ⇒ 随机波动率模型（第 6 篇）</td>
 </tr>
 <tr>
-<td>正态、路径连续</td>
+<td>收益正态、路径连续</td>
 <td>厚尾、跳跃</td>
 <td>极端行情对冲失效</td>
 </tr>
 </tbody>
 </table>
-<p>BSM 的正确用法：<strong>定价的基准语言 + 对冲的坐标系</strong>（市场用"隐含波动率"说 BSM 普通话）。</p>
-<h2>三、Greeks 速查（伊藤引理的偏导）</h2>
-<table>
-<thead>
-<tr>
-<th>Greek</th>
-<th>定义</th>
-<th>解读</th>
-<th>对冲用途</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Delta</strong> <span class="math-inline">$\Delta$</span></td>
-<td><span class="math-inline">$\partial V/\partial S$</span></td>
-<td>标的动 1，期权动多少</td>
-<td><strong>主对冲工具</strong>：Delta 中性</td>
-</tr>
-<tr>
-<td><strong>Gamma</strong> <span class="math-inline">$\Gamma$</span></td>
-<td><span class="math-inline">$\partial^2V/\partial S^2$</span></td>
-<td>Delta 的变化率</td>
-<td>对冲稳定性；高 Γ ⇒ 频繁再平衡</td>
-</tr>
-<tr>
-<td><strong>Theta</strong> <span class="math-inline">$\Theta$</span></td>
-<td><span class="math-inline">$\partial V/\partial t$</span></td>
-<td>时间衰减</td>
-<td>由 PDE 反解：<span class="math-inline">$\Theta=rV-rS\Delta-\frac12\sigma^2S^2\Gamma$</span></td>
-</tr>
-<tr>
-<td><strong>Vega</strong></td>
-<td><span class="math-inline">$\partial V/\partial\sigma$</span></td>
-<td>波动率敏感度</td>
-<td>对冲隐波变化</td>
-</tr>
-<tr>
-<td><strong>Rho</strong></td>
-<td><span class="math-inline">$\partial V/\partial r$</span></td>
-<td>利率敏感度</td>
-<td>长期限期权才重要</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>💡 <strong>Greeks 就是伊藤引理里各阶偏导的名字</strong>；高 Γ ⇔ PDE 中 <span class="math-inline">$\frac12\sigma^2S^2\Gamma$</span> 项大 ⇔ 对冲要频繁重做，逻辑自洽。</p>
-</blockquote>
-<h2>四、风险中性定价：同一复制价格的概率表示</h2>
-<h3>4.1 Q 测度</h3>
-<p>定义风险中性测度 <span class="math-inline">$\mathbb Q$</span>，使无分红股票满足：</p>
+<p>BSM 的正确用法：<strong>定价的基准语言 + 对冲的坐标系</strong>。市场用"隐含波动率"说 BSM 普通话，偏离的部分（微笑）才是真正的信息。</p>
+<hr />
+<h2>4. 风险中性定价：复制价格的概率表示</h2>
+<h3>4.1 风险中性测度 Q</h3>
+<p>定义一个新测度 <span class="math-inline">$\mathbb Q$</span>，使无分红股票的动态变为：</p>
 <p><div class="math-display">$$ dS_t=rS_tdt+\sigma S_tdW_t^{\mathbb Q} $$</div></p>
+<p>与真实世界（<span class="math-inline">$\mathbb P$</span>）相比<strong>唯一变化是漂移 <span class="math-inline">$\mu\to r$</span></strong>。</p>
 <blockquote>
-<p>⚠️ <strong>不是</strong>现实中预期收益变成了 <span class="math-inline">$r$</span>！<span class="math-inline">$\mathbb Q$</span> 是<strong>重新加权的路径概率</strong>（Girsanov：用指数鞅给路径称重），使命是让"期望算出的数"等于"复制成本"。</p>
+<p>⚠️ <strong>高频误读</strong>：这不是说现实中股票的预期收益真的变成了 r。<span class="math-inline">$\mathbb Q$</span> 是一套<strong>重新加权的路径概率</strong>（Girsanov 定理：用指数鞅给路径重新称重），它唯一的使命是让"概率算出的期望"恰好等于"复制成本"。真实世界的预期收益依然是 μ——无人知晓，也无需知晓。</p>
 </blockquote>
 <table>
 <thead>
@@ -171,44 +226,55 @@
 <td><span class="math-inline">$\mu$</span></td>
 </tr>
 <tr>
-<td>无套利定价</td>
+<td>无套利定价衍生品</td>
 <td><span class="math-inline">$\mathbb Q$</span></td>
 <td><span class="math-inline">$r$</span></td>
 </tr>
 </tbody>
 </table>
 <h3>4.2 折现股价是 Q-鞅（指数鞅登场）</h3>
-<p><span class="math-inline">$\mathbb Q$</span> 下 GBM 解折现：</p>
+<p><span class="math-inline">$\mathbb Q$</span> 下 GBM 的解折现：</p>
 <p><div class="math-display">$$ \frac{e^{-rt}S_t}{S_0}=\exp\Big(\sigma W_t^{\mathbb Q}-\tfrac12\sigma^2t\Big) $$</div></p>
-<p>右边正是第 2 篇 §7.4 的指数鞅（期望恒 1）⇒ <strong>折现价格是鞅</strong>（否则无套利被破坏）。这是风险中性定价的合法性来源。</p>
-<h3>4.3 定价公式（注意条件）</h3>
-<p><div class="math-display">$$ \boxed{V_t=e^{-r(T-t)}\,E^{\mathbb Q}\big[V_T\,\big|\,\mathcal F_t\big]} $$</div></p>
-<p><strong>条件 <span class="math-inline">$\mid\mathcal F_t$</span> 不能省</strong>：今天的价格用今天已知的信息算。Markov 模型下所需信息浓缩为当前股价 <span class="math-inline">$S_t$</span>。</p>
-<h3>4.4 存在 ≠ 唯一（理论边界，加分点）</h3>
+<p>右边正是第 2 篇推过的<strong>指数鞅</strong>（期望恒为 1）⇒ <strong>折现股价是 Q-鞅</strong>：折现价格没有漂移，未来折现价的最好预测就是当前折现价。这是风险中性定价的合法性来源——所有资产的折现价格在同一测度下必须是鞅，否则存在套利。</p>
+<h3>4.3 定价公式（注意条件期望）</h3>
+<p><div class="math-display">$$ \boxed{V_t=e^{-r(T-t)}\,E^{\mathbb Q}\big[V_T\mid\mathcal F_t\big]} $$</div></p>
+<p>条件 <span class="math-inline">$\mid\mathcal F_t$</span> 不能省：<strong>今天的价格必须用今天已知的信息计算</strong>。在 Markov 模型（如 GBM）里，定价所需信息浓缩为一个数——当前股价 <span class="math-inline">$S_t$</span>。</p>
+<h3>4.4 存在 ≠ 唯一（理论边界，面试加分点）</h3>
 <ul>
-<li><strong>第一基本定理</strong>：无套利 ⇒ 风险中性测度<strong>存在</strong></li>
-<li><strong>第二基本定理</strong>：定价测度<strong>唯一</strong> ⟺ 市场完备（所有 payoff 可复制）</li>
-<li>标准 BSM 市场（连续交易）完备 ⇒ 欧式期权价格唯一</li>
-<li>反例：跳跃模型中跳跃风险无法对冲（不完备）⇒ 一族定价测度 ⇒ 只有<strong>价格区间</strong>，需额外选择</li>
+<li><strong>资产定价第一基本定理</strong>：无套利 ⇒ 风险中性测度<strong>存在</strong></li>
+<li><strong>第二基本定理</strong>：测度<strong>唯一</strong> ⟺ 市场完备（所有 payoff 都可复制）</li>
+<li>标准 BSM 市场（连续交易 + 股票 + 现金）完备 ⇒ 欧式期权价格唯一</li>
+<li>反例：带跳跃的模型里跳跃风险无法用连续交易的股票对冲（不完备）⇒ 存在<strong>一族</strong>风险中性测度 ⇒ 衍生品只有价格区间，定价需要额外选择</li>
 </ul>
-<h2>五、BSM 公式完整推导：把期望算出来</h2>
+<p><strong>"存在"与"唯一"是两个定理、两件事</strong>——能分清这层是理解深度的标志。</p>
+<hr />
+<h2>5. BSM 公式完整推导：把期望算出来</h2>
 <h3>5.1 拆支付</h3>
-<p><div class="math-display">$$ (S_T-K)^+=S_T\mathbf 1_{\{S_T>K\}}-K\mathbf 1_{\{S_T>K\}} $$</div></p>
-<p><div class="math-display">$$ C_t=e^{-r\tau}\Big[E^{\mathbb Q}\big[S_T\mathbf 1_{\{S_T>K\}}\big]-K\,\mathbb Q(S_T>K)\Big]\qquad(\tau=T-t) $$</div></p>
+<p>欧式看涨到期支付 <span class="math-inline">$(S_T-K)^+$</span>，拆成两部分：</p>
+<p><div class="math-display">$$ (S_T-K)^+=S_T\,\mathbf 1_{\{S_T>K\}}-K\,\mathbf 1_{\{S_T>K\}} $$</div></p>
+<p><div class="math-display">$$ C_t=e^{-r\tau}\Big[\underbrace{E^{\mathbb Q}[S_T\mathbf 1_{\{S_T>K\}}]}_{\text{截断的一阶矩}}-\underbrace{K\,\mathbb Q(S_T>K)}_{\text{实值概率}}\Big]\qquad(\tau=T-t) $$</div></p>
 <h3>5.2 Q 下终端分布</h3>
-<p><div class="math-display">$$ S_T=S_t\exp\Big[\big(r-\tfrac12\sigma^2\big)\tau+\sigma\sqrt\tau\,Z\Big],\quad Z\sim N(0,1) $$</div></p>
+<p>由 4.2 的解（漂移已是 r）：</p>
+<p><div class="math-display">$$ S_T=S_t\exp\Big[\big(r-\tfrac12\sigma^2\big)\tau+\sigma\sqrt\tau\,Z\Big],\qquad Z\sim N(0,1) $$</div></p>
 <h3>5.3 实值概率 ⇒ Φ(d₂)</h3>
-<p><span class="math-inline">$S_T>K$</span> 整理成 <span class="math-inline">$Z>-\dfrac{\ln(S_t/K)+(r-\frac12\sigma^2)\tau}{\sigma\sqrt\tau}$</span>，定义：</p>
-<p><div class="math-display">$$ \boxed{d_2=\frac{\ln(S_t/K)+(r-\frac12\sigma^2)\tau}{\sigma\sqrt\tau}}\qquad\Rightarrow\qquad \mathbb Q(S_T>K)=\Phi(d_2) $$</div></p>
-<p>（由正态密度对称性，<span class="math-inline">$P(Z>-d_2)=\Phi(d_2)$</span>。）</p>
-<h3>5.4 截断期望 ⇒ Φ(d₁)（配方技巧）</h3>
-<p><div class="math-display">$$ E[S_T\mathbf 1_{\{S_T>K\}}]=S_te^{(r-\frac12\sigma^2)\tau}\cdot\frac{1}{\sqrt{2\pi}}\int_{-d_2}^{\infty}e^{\sigma\sqrt\tau z}e^{-z^2/2}dz $$</div></p>
-<p>配方：<span class="math-inline">$e^{\sigma\sqrt\tau z-\frac{z^2}{2}}=e^{\frac12\sigma^2\tau}\cdot e^{-\frac{(z-\sigma\sqrt\tau)^2}{2}}$</span>，换元 <span class="math-inline">$u=z-\sigma\sqrt\tau$</span> 后积分下限变 <span class="math-inline">$-d_2-\sigma\sqrt\tau$</span>，积分到 <span class="math-inline">$\infty$</span> 给出 <span class="math-inline">$\Phi(d_1)$</span>，其中 <span class="math-inline">$d_1=d_2+\sigma\sqrt\tau$</span>。合并指数（<span class="math-inline">$e^{(r-\frac12\sigma^2)\tau}\cdot e^{\frac12\sigma^2\tau}=e^{r\tau}$</span>）：</p>
+<p><span class="math-inline">$S_T>K$</span> 两边取对数，整理成 Z 的不等式（注意不等号方向）：</p>
+<p><div class="math-display">$$ Z>-\frac{\ln(S_t/K)+(r-\frac12\sigma^2)\tau}{\sigma\sqrt\tau} $$</div></p>
+<p>定义：</p>
+<p><div class="math-display">$$ \boxed{d_2=\frac{\ln(S_t/K)+(r-\frac12\sigma^2)\tau}{\sigma\sqrt\tau}}\qquad\Longrightarrow\qquad \mathbb Q(S_T>K)=\Phi(d_2) $$</div></p>
+<p>（正态密度对称 ⇒ <span class="math-inline">$P(Z>-d_2)=\Phi(d_2)$</span>。Φ 即标准正态 CDF，教科书也写 <span class="math-inline">$N(\cdot)$</span>。）</p>
+<h3>5.4 截断期望 ⇒ Φ(d₁)（配方技巧主场）</h3>
+<p><div class="math-display">$$ E[S_T\mathbf 1_{\{S_T>K\}}]=S_te^{(r-\frac12\sigma^2)\tau}\cdot\frac1{\sqrt{2\pi}}\int_{-d_2}^{\infty}e^{\sigma\sqrt\tau\,z}\,e^{-z^2/2}\,dz $$</div></p>
+<p><strong>配方</strong>（第 2 篇练习过的同款）：<span class="math-inline">$e^{\sigma\sqrt\tau z-\frac{z^2}2}=e^{\frac12\sigma^2\tau}\cdot e^{-\frac{(z-\sigma\sqrt\tau)^2}2}$</span>。</p>
+<ul>
+<li>提出常数 <span class="math-inline">$e^{\frac12\sigma^2\tau}$</span></li>
+<li>剩余积分是均值为 <span class="math-inline">$\sigma\sqrt\tau$</span> 的正态密度在 <span class="math-inline">$z>-d_2$</span> 上的积分；换元 <span class="math-inline">$u=z-\sigma\sqrt\tau$</span> 后下限变为 <span class="math-inline">$-d_2-\sigma\sqrt\tau$</span>，由对称性积分值 <span class="math-inline">$=\Phi(d_2+\sigma\sqrt\tau)$</span></li>
+</ul>
+<p>定义 <span class="math-inline">$d_1=d_2+\sigma\sqrt\tau$</span>，合并指数（<span class="math-inline">$e^{(r-\frac12\sigma^2)\tau}\cdot e^{\frac12\sigma^2\tau}=e^{r\tau}$</span>）：</p>
 <p><div class="math-display">$$ \boxed{E[S_T\mathbf 1_{\{S_T>K\}}]=S_te^{r\tau}\Phi(d_1)},\qquad \boxed{d_1=\frac{\ln(S_t/K)+(r+\frac12\sigma^2)\tau}{\sigma\sqrt\tau}=d_2+\sigma\sqrt\tau} $$</div></p>
 <h3>5.5 组装</h3>
-<p><div class="math-display">$$ \boxed{C(S_t,t)=S_t\Phi(d_1)-Ke^{-r\tau}\Phi(d_2)} $$</div></p>
-<p><span class="math-inline">$d_1,d_2$</span> 不是额外参数，是<strong>对数正态截断积分的必然产物</strong>：<span class="math-inline">$d_2$</span> 来自事件概率，<span class="math-inline">$d_1$</span> 来自"事件发生时的平均收益"（配方平移出的 <span class="math-inline">$\sigma\sqrt\tau$</span>）。</p>
-<h3>5.6 两个 Φ 的含义（面试高频辨析）</h3>
+<p><div class="math-display">$$ \boxed{C(S_t,t)=S_t\,\Phi(d_1)-Ke^{-r\tau}\,\Phi(d_2)} $$</div></p>
+<p><span class="math-inline">$d_1,d_2$</span> 不是拍脑袋加的参数：<strong>d₂ 来自"事件概率"，d₁ 来自"事件发生时的平均收益"</strong>（配方平移出来的 σ√τ）。</p>
+<h3>5.6 两个 Φ 的含义（高频辨析）</h3>
 <table>
 <thead>
 <tr>
@@ -220,24 +286,25 @@
 <tbody>
 <tr>
 <td><span class="math-inline">$\Phi(d_2)$</span></td>
-<td><strong>风险中性</strong>实值概率</td>
+<td><strong>风险中性测度下</strong>到期实值的概率</td>
 <td>真实世界行权概率 ✗</td>
 </tr>
 <tr>
 <td><span class="math-inline">$\Phi(d_1)$</span></td>
-<td><strong>Delta</strong>（<span class="math-inline">$\partial C/\partial S$</span>）</td>
-<td>实值概率 ✗（偏大）</td>
+<td>该期权的 <strong>Delta</strong>（<span class="math-inline">$\partial C/\partial S$</span>）</td>
+<td>"实值概率" ✗（它偏大）</td>
 </tr>
 </tbody>
 </table>
-<p>真实实值概率：<span class="math-inline">$\mathbb P(S_T>K)=\Phi\big(d_2+\frac{(\mu-r)\tau}{\sigma\sqrt\tau}\big)$</span>，仅 <span class="math-inline">$\mu=r$</span> 时退回 <span class="math-inline">$\Phi(d_2)$</span>。<strong>风险中性概率是定价工具，不是预测工具。</strong></p>
-<h2>六、数字验收</h2>
-<h3>例 A：解析解</h3>
-<p><span class="math-inline">$S=K=100,\ r=5\%,\ \sigma=20\%,\ \tau=1$</span>：<span class="math-inline">$d_1=0.35,\ d_2=0.15$</span>；<span class="math-inline">$\Phi(0.35)\approx0.6368,\ \Phi(0.15)\approx0.5596$</span>：</p>
+<p>真实世界的实值概率要用 μ 算：<span class="math-inline">$\mathbb P(S_T>K)=\Phi\big(d_2+\frac{(\mu-r)\tau}{\sigma\sqrt\tau}\big)$</span>，仅当 μ=r 时才回到 Φ(d₂)。<strong>风险中性概率是定价工具，不是预测工具。</strong></p>
+<hr />
+<h2>6. 数字验收：解析解 vs 蒙特卡洛</h2>
+<h3>例 A：解析解热身</h3>
+<p><span class="math-inline">$S=K=100,\ r=5\%,\ \sigma=20\%,\ \tau=1$</span>：<span class="math-inline">$d_1=0.35,\ d_2=0.15$</span>；查表 <span class="math-inline">$\Phi(0.35)\approx0.6368,\ \Phi(0.15)\approx0.5596$</span>：</p>
 <p><div class="math-display">$$ C=100\times0.6368-100e^{-0.05}\times0.5596\approx\boxed{10.45} $$</div></p>
-<p>测度差异感受：若真实 <span class="math-inline">$\mu=8\%$</span>，真实实值概率 <span class="math-inline">$=\Phi(0.15+0.15)=\Phi(0.30)\approx0.62$</span>，定价用 0.56——<strong>不同问题用不同概率，别混</strong>。</p>
-<h3>例 B：蒙特卡洛（定价验钞机）</h3>
-<p><span class="math-inline">$S_0=100,\ K=105$</span>（其余同上），<span class="math-inline">$\mathbb Q$</span> 下精确抽样：</p>
+<p>测度差异直观感受：若你估计真实 μ=8%，真实实值概率 <span class="math-inline">$=\Phi(0.15+\frac{0.03}{0.2})=\Phi(0.30)\approx0.62$</span>，而定价用的是 0.56——<strong>不同问题用不同概率，别混</strong>。</p>
+<h3>例 B：蒙特卡洛（定价的"验钞机"）</h3>
+<p><span class="math-inline">$S_0=100,\ K=105$</span>（其余同上），在 Q 下用 GBM 精确终端分布抽样：</p>
 <pre><code class="language-python">import numpy as np
 
 S0, K, T = 100.0, 105.0, 1.0
@@ -247,7 +314,8 @@ rng = np.random.default_rng(42)
 Z = rng.standard_normal(N)
 ST = S0 * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)
 disc = np.exp(-r * T) * np.maximum(ST - K, 0)
-price, stderr = disc.mean(), disc.std(ddof=1) / np.sqrt(N)</code></pre>
+price = disc.mean()
+stderr = disc.std(ddof=1) / np.sqrt(N)</code></pre>
 <table>
 <thead>
 <tr>
@@ -274,48 +342,30 @@ price, stderr = disc.mean(), disc.std(ddof=1) / np.sqrt(N)</code></pre>
 </tr>
 </tbody>
 </table>
-<p>解析解落在 CI 内 ✓。流程：<strong>Q 下生成 <span class="math-inline">$S_T$</span> → 算支付 → 折现平均</strong>。</p>
-<h2>七、进阶概念</h2>
+<p>解析解落在置信区间内 ✓。流程即风险中性定价的完整实践：<strong>Q 下生成 <span class="math-inline">$S_T$</span> → 算支付 → 折现平均</strong>。</p>
+<hr />
+<h2>7. 延伸：数字期权、远期/期货、美式</h2>
 <ul>
-<li><strong>隐含波动率</strong>：反代 BSM 使理论价 = 市场价的 σ；市场对未来波动的前瞻预期（"报价语言"）</li>
-<li><strong>波动率微笑/偏斜</strong>：隐波随行权价/期限变化，违背 BSM 常波动率假设 ⇒ 随机波动率模型（第 6 篇 Heston）</li>
-<li><strong>美式期权</strong>：可提前行权 = 停时最优化 = 自由边界问题，<strong>不能写成一个期望</strong>。经典结论：无分红美式<strong>看涨</strong>永不提前行权；美式<strong>看跌</strong>通常会</li>
-<li><strong>连续分红率 q</strong>：Q 下漂移 <span class="math-inline">$r-q$</span>；公式中股票项改 <span class="math-inline">$S_te^{-q\tau}$</span></li>
+<li><strong>数字（二元）期权</strong>：支付 <span class="math-inline">$\mathbf 1_{\{S_T>K\}}$</span>，价格 <span class="math-inline">$=e^{-r\tau}\Phi(d_2)$</span>——正是"Q 实值概率 × 贴现"。拆解视角：BS 看涨 = 资产或无价值（<span class="math-inline">$S\Phi(d_1)$</span>）− 现金或无价值（<span class="math-inline">$Ke^{-r\tau}\Phi(d_2)$</span>）</li>
+<li><strong>远期与期货定价</strong>：<span class="math-inline">$F=Se^{(r-q)T}$</span>（持有成本）。偏离即套利：借现金买现货、卖远期。远期 OTC 到期一次结算；期货交易所标准化、逐日盯市 + 保证金</li>
+<li><strong>美式期权</strong>：可提前行权 = 停时最优化 = 自由边界问题，<strong>不能写成一个期望</strong>。数值解法 = 二叉树倒向递推（每节点取 max）。经典结论：无分红美式<strong>看涨</strong>永不提前行权；美式<strong>看跌</strong>通常会</li>
+<li><strong>连续分红率 q</strong>：Q 下漂移 <span class="math-inline">$r-q$</span>，公式中股票项改 <span class="math-inline">$S_te^{-q\tau}$</span></li>
 </ul>
-<h3>7.1 ★ 二叉树期权定价（CRR，离散版定价引擎）</h3>
-<p>一步二叉树（<span class="math-inline">$\Delta t$</span> 后价格只能到 <span class="math-inline">$uS$</span> 或 <span class="math-inline">$dS$</span>，取 <span class="math-inline">$u=e^{\sigma\sqrt{\Delta t}},\ d=1/u$</span>）：</p>
-<p><div class="math-display">$$ \text{风险中性概率}\ p=\frac{e^{r\Delta t}-d}{u-d},\qquad C=e^{-r\Delta t}\big[pC_u+(1-p)C_d\big] $$</div></p>
+<hr />
+<h2>8. 自测清单（必须掌握的考点）</h2>
 <ul>
-<li>步数增加时二叉树价格<strong>收敛到 BSM</strong>（离散 ↔ 连续的桥）</li>
-<li><strong>美式期权的标准数值解法</strong>：每个节点取 <span class="math-inline">$\max(\text{持有价值},\ \text{立即行权价值})$</span> 倒向递推（backward induction）——正面解决"美式不能写单一期望"</li>
-<li>彩蛋：n 步价格 = 二项分布加权平均的贴现，正是第 1 篇"伯努利之和 → 二项"的落地</li>
-</ul>
-<h3>7.2 数字（二元）期权</h3>
-<p>支付 <span class="math-inline">$\mathbf 1_{\{S_T>K\}}$</span> 的合约：</p>
-<p><div class="math-display">$$ \boxed{C_{\text{digital}}=e^{-r\tau}\,\Phi(d_2)} $$</div></p>
-<p>——正是 5.3 的"<span class="math-inline">$\mathbb Q$</span> 实值概率 × 贴现"。拆解视角：BS 看涨 = <strong>资产或无价值</strong>（<span class="math-inline">$S\Phi(d_1)$</span>）− <strong>现金或无价值</strong>（<span class="math-inline">$Ke^{-r\tau}\Phi(d_2)$</span>）。</p>
-<h3>7.3 远期与期货定价</h3>
-<p><div class="math-display">$$ \boxed{F=S\,e^{(r-q)T}}\qquad(\text{持有成本；偏离即"借现金买现货、卖远期"的套利}) $$</div></p>
-<ul>
-<li><strong>远期</strong>：OTC 合约，到期一次性结算</li>
-<li><strong>期货</strong>：交易所标准化，<strong>逐日盯市</strong>（marking to market）+ 保证金——定价近似远期，但现金流时间结构不同</li>
-</ul>
-<h2>八、自测清单（必须掌握的考点）</h2>
-<ul>
-<li>☐ Put-Call 平价 + 套利论证</li>
-<li>☐ 两种复制推导都能白板写，μ 消失的三层原因</li>
-<li>☐ 五大 Greeks 定义 + Theta 的 PDE 反解式</li>
+<li>☐ Put-Call 平价 + 到期收益对照表</li>
+<li>☐ 一步二叉树的风险中性概率 <span class="math-inline">$p=\frac{e^{r\Delta t}-d}{u-d}$</span> 从无套利推出</li>
+<li>☐ 两种复制推导都能白板写；μ 消失的三层原因</li>
+<li>☐ 五大 Greeks + Theta 的 PDE 反解式</li>
 <li>☐ P vs Q 分工；"预期收益变成 r"为什么是错的</li>
 <li>☐ 折现股价是 Q-鞅的证明（指数鞅）</li>
-<li>☐ 存在 ≠ 唯一：完备市场的含义</li>
-<li>☐ <span class="math-inline">$d_1,d_2$</span> 完整推导（尤其配方那步）</li>
-<li>☐ <span class="math-inline">$\Phi(d_1)$</span> 是 Delta、<span class="math-inline">$\Phi(d_2)$</span> 是 Q 实值概率——别混真实概率</li>
-<li>☐ 美式为什么不能写成一个期望</li>
-<li>☐ 二叉树：风险中性概率 <span class="math-inline">$p=(e^{r\Delta t}-d)/(u-d)$</span>；美式用倒向递推</li>
-<li>☐ 数字期权 <span class="math-inline">$=e^{-r\tau}\Phi(d_2)$</span>；看涨 = 资产数字 − 现金数字</li>
-<li>☐ 远期定价 <span class="math-inline">$F=Se^{(r-q)T}$</span>（持有成本）；期货逐日盯市</li>
+<li>☐ 第一基本定理（存在）vs 第二基本定理（唯一/完备）</li>
+<li>☐ BSM 五步推导（尤其 5.4 配方那步）</li>
+<li>☐ Φ(d₁)=Delta、Φ(d₂)=Q 实值概率；真实概率要加 <span class="math-inline">$(\mu-r)$</span> 修正</li>
+<li>☐ 美式为什么不能写成一个期望；二叉树倒向递推怎么处理</li>
 </ul>
-<h2>九、30 秒速查总表</h2>
+<h2>9. 30 秒速查总表</h2>
 <table>
 <thead>
 <tr>
@@ -326,7 +376,11 @@ price, stderr = disc.mean(), disc.std(ddof=1) / np.sqrt(N)</code></pre>
 <tbody>
 <tr>
 <td>Put-Call 平价</td>
-<td><span class="math-inline">$C+Ke^{-rT}=P+S$</span></td>
+<td><span class="math-inline">$C+Ke^{-rT}=P+S$</span>（同收益 ⇒ 同价格）</td>
+</tr>
+<tr>
+<td>二叉树</td>
+<td><span class="math-inline">$p=\frac{e^{r\Delta t}-d}{u-d}$</span>；<span class="math-inline">$C=e^{-r\Delta t}[pC_u+(1-p)C_d]$</span>；美式用倒向递推</td>
 </tr>
 <tr>
 <td>BS-PDE</td>
@@ -342,7 +396,11 @@ price, stderr = disc.mean(), disc.std(ddof=1) / np.sqrt(N)</code></pre>
 </tr>
 <tr>
 <td>风险中性</td>
-<td><span class="math-inline">$V_t=e^{-r\tau}E^{\mathbb Q}[V_T\mid\mathcal F_t]$</span>；折现价是 Q-鞅</td>
+<td><span class="math-inline">$V_t=e^{-r\tau}E^Q[V_T\mid\mathcal F_t]$</span>；折现价是 Q-鞅</td>
+</tr>
+<tr>
+<td>存在 vs 唯一</td>
+<td>无套利 ⇒ 存在；完备 ⇒ 唯一</td>
 </tr>
 <tr>
 <td>BSM</td>
@@ -350,32 +408,19 @@ price, stderr = disc.mean(), disc.std(ddof=1) / np.sqrt(N)</code></pre>
 </tr>
 <tr>
 <td>两个 Φ</td>
-<td><span class="math-inline">$\Phi(d_2)$</span>=Q 实值概率，<span class="math-inline">$\Phi(d_1)$</span>=Delta</td>
-</tr>
-<tr>
-<td>存在 vs 唯一</td>
-<td>无套利 ⇒ 存在；完备 ⇒ 唯一</td>
-</tr>
-<tr>
-<td>美式</td>
-<td>提前行权 = 停时 = 自由边界，不能写成单一期望；数值解法 = 二叉树倒向递推</td>
-</tr>
-<tr>
-<td>二叉树</td>
-<td><span class="math-inline">$p=\frac{e^{r\Delta t}-d}{u-d}$</span>，<span class="math-inline">$C=e^{-r\Delta t}[pC_u+(1-p)C_d]$</span>；步数多 → BSM</td>
+<td>Φ(d₂)=Q 实值概率，Φ(d₁)=Delta</td>
 </tr>
 <tr>
 <td>数字期权</td>
-<td><span class="math-inline">$e^{-r\tau}\Phi(d_2)$</span>（= Q 实值概率 × 贴现）</td>
+<td><span class="math-inline">$e^{-r\tau}\Phi(d_2)$</span></td>
 </tr>
 <tr>
-<td>远期/期货</td>
+<td>远期定价</td>
 <td><span class="math-inline">$F=Se^{(r-q)T}$</span>；期货逐日盯市</td>
 </tr>
 </tbody>
 </table>
-<p><em>参考：OpenQuant《Quant Interview Study Guide》；Shreve《Stochastic Calculus for Finance II》第 4–5 章；Björk 第 2 章（基本定理）；Columbia 连续时间讲义（mh2078）。</em><br />
-<em>系列导航：[00 总目录] → [01 概率与统计] → [02 随机微积分与股价模型] → </em><em>[03 衍生品定价与 BSM]</em><em> → [04 机器学习与深度学习] → [05 线性代数与微积分] → [06 金融专题] → [07 预测市场与二元合约（补充篇）]</em></p>
+<p><em>参考：OpenQuant《Quant Interview Study Guide》；Shreve《Stochastic Calculus for Finance II》第 4–5 章；Björk 第 2 章；Hull《Options, Futures, and Other Derivatives》；Columbia 连续时间讲义（mh2078）。</em></p>
 </article>
 <div class="pager-row"><a class="pager prev" href="02.html">← 随机微积分与股价模型</a><a class="pager next" href="04.html">机器学习与深度学习 →</a></div>
 <footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>

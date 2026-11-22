@@ -23,58 +23,68 @@
 </aside>
 <main class="content">
 <article>
-<h1>Quant 面试复习手册 04｜机器学习与深度学习：回归、分类、树、NN、LLM</h1>
+<h1>Quant 面试复习手册 04｜机器学习与深度学习（完整讲解版）：回归、分类、树、NN、LLM</h1>
 <blockquote>
-<p>📌 <strong>Quant 面试复习手册 · 第 4 篇 / 共 7 篇</strong>（总目录）<br />
-本篇覆盖：线性回归（Gauss-Markov、正则化）→ 分类（模型与指标）→ 树方法 → 神经网络 → LLM 在量化中的应用。<br />
-框架参考 OpenQuant《Quant Interview Study Guide》。</p>
+<p>📌 Quant 面试复习手册 · 第 4 篇 / 共 7 篇<br />
+本篇按"为什么有效 → 怎么用 → 什么时候失效"的逻辑讲清每个模型。金融数据的特点贯穿全篇：<strong>信噪比极低、非平稳、易过拟合</strong>——所以每个方法都要问"它对噪声做了什么假设"。<br />
+覆盖：线性回归（OLS/Gauss-Markov/正则化）→ 分类模型与指标 → 树方法 → 神经网络 → LLM。</p>
 </blockquote>
-<h2>一、线性回归</h2>
-<h3>1.1 模型与 OLS</h3>
+<hr />
+<h2>1. 线性回归：一切模型的基准线</h2>
+<h3>1.1 模型与 OLS 解的推导</h3>
+<p>模型：</p>
 <p><div class="math-display">$$ Y=\beta_0+\sum_{i=1}^p\beta_iX_i+\epsilon $$</div></p>
-<p>OLS 最小化 <span class="math-inline">$RSS=\sum(y_i-\hat y_i)^2$</span>：</p>
-<p><div class="math-display">$$ \hat\beta=(\mathbf X^\intercal\mathbf X)^{-1}\mathbf X^\intercal\mathbf y,\qquad \mathrm{Var}(\hat\beta)=(\mathbf X^\intercal\mathbf X)^{-1}\sigma^2,\qquad \hat\sigma^2=\frac{RSS}{m-p-1} $$</div></p>
-<h3>1.2 Gauss-Markov 五大假设 ⭐（高频考点）</h3>
-<p>满足时 OLS 是 <strong>BLUE</strong>（最优线性无偏估计）；再加 <span class="math-inline">$\epsilon\sim N(0,\sigma^2)$</span> 则同时是 <strong>MLE</strong>：</p>
+<p>OLS 的目标是最小化残差平方和 <span class="math-inline">$RSS=\sum_{i=1}^m(y_i-\hat y_i)^2$</span>。矩阵形式对 β 求导：</p>
+<p><div class="math-display">$$ RSS=(\mathbf y-\mathbf X\boldsymbol\beta)^\intercal(\mathbf y-\mathbf X\boldsymbol\beta)\ \Rightarrow\ \hat\beta=(\mathbf X^\intercal\mathbf X)^{-1}\mathbf X^\intercal\mathbf y $$</div></p>
+<p>系数协方差矩阵 <span class="math-inline">$\mathrm{Var}(\hat\beta)=(\mathbf X^\intercal\mathbf X)^{-1}\sigma^2$</span>，误差方差估计 <span class="math-inline">$\hat\sigma^2=\frac{RSS}{m-p-1}$</span>（自由度要扣掉 p+1 个被估参数）。</p>
+<p><strong>几何解释（面试加分）</strong>：拟合值 <span class="math-inline">$\hat{\mathbf y}$</span> 是 <span class="math-inline">$\mathbf y$</span> 在 <strong>X 列空间上的投影</strong>，残差与所有回归量正交——OLS 就是"把 y 往特征张成的子空间上投影"。</p>
+<h3>1.2 ★ Gauss–Markov 五大假设（出现率最高的考点）</h3>
+<p>满足全部五条时 OLS 是 <strong>BLUE</strong>（最优线性无偏估计）；再加 <span class="math-inline">$\epsilon\sim N(0,\sigma^2)$</span> 则同时是 <strong>MLE</strong>。逐条列出假设与金融中的典型违背：</p>
 <table>
 <thead>
 <tr>
 <th>假设</th>
 <th>内容</th>
 <th>金融中的典型违背</th>
+<th>后果</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>1 线性</td>
-<td>对参数线性</td>
+<td>模型对参数线性</td>
+<td>非线性关系被忽略</td>
 <td>模型误设</td>
 </tr>
 <tr>
 <td>2 严格外生性</td>
 <td><span class="math-inline">$E[\epsilon_i\mid\mathbf X]=0$</span></td>
-<td><strong>内生性</strong>（遗漏变量、联立性）→ 有偏且不一致，最致命</td>
+<td><strong>内生性</strong>：遗漏变量、联立性</td>
+<td>有偏且不一致——最致命</td>
 </tr>
 <tr>
 <td>3 无多重共线性</td>
 <td><span class="math-inline">$\mathbf X^\intercal\mathbf X$</span> 可逆</td>
+<td>因子间高度相关（如动量与反转）</td>
 <td>标准误膨胀、系数不稳</td>
 </tr>
 <tr>
 <td>4 同方差</td>
-<td><span class="math-inline">$\mathrm{Var}(\epsilon_i\mid\mathbf X)=\sigma^2$</span></td>
-<td><strong>异方差</strong>（金融常态）：系数仍无偏，<strong>标准错误</strong> → 推断失效</td>
+<td>误差方差恒定</td>
+<td><strong>异方差</strong>：波动率聚集（高波动期误差大）</td>
+<td>系数仍无偏，<strong>标准错误</strong> → t 检验失效</td>
 </tr>
 <tr>
 <td>5 无自相关</td>
-<td><span class="math-inline">$\mathrm{Cov}(\epsilon_i,\epsilon_j\mid\mathbf X)=0$</span></td>
-<td><strong>自相关</strong>（时序常态）：同上</td>
+<td><span class="math-inline">$\mathrm{Cov}(\epsilon_i,\epsilon_j)=0$</span></td>
+<td><strong>自相关</strong>：收益序列相关（时序数据常态）</td>
+<td>同上</td>
 </tr>
 </tbody>
 </table>
-<p><strong>修正</strong>：异方差/自相关不改系数只错标准误 → <strong>White（HC）/ Newey-West</strong> 稳健标准误。</p>
+<p><strong>关键结论（必背）</strong>：异方差与自相关<strong>不使系数有偏</strong>，只使标准误错误 → 系数点估计还能用，但 t 检验/置信区间全废。修正用稳健标准误：异方差用 <strong>White（HC）</strong>，自相关用 <strong>Newey–West</strong>（两者可叠加）。<strong>只修 SE，不改系数。</strong></p>
 <blockquote>
-<p>📌 呼应：BLUE 是"无偏约束下的方差最优"；Ridge/Lasso 等有偏方法靠偏差换方差（对应 MMSE 思想）。</p>
+<p>【考点】为什么金融里 R² 很低是常态：收益的不可预测部分（噪声）占绝对主导，横截面回归 R² 在 1%~5% 就已可用——<strong>低 R² 不是模型错，是市场难</strong>。</p>
 </blockquote>
 <h3>1.3 模型评估与推断</h3>
 <table>
@@ -82,38 +92,39 @@
 <tr>
 <th>指标</th>
 <th>公式</th>
-<th>直觉</th>
+<th>解读</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><span class="math-inline">$R^2$</span></td>
 <td><span class="math-inline">$1-\frac{RSS}{TSS}$</span></td>
-<td>X 解释 Y 方差的比例；<strong>金融里低 <span class="math-inline">$R^2$</span> 是常态</strong></td>
+<td>X 解释 Y 方差的比例</td>
 </tr>
 <tr>
 <td>调整 <span class="math-inline">$R^2$</span></td>
 <td><span class="math-inline">$1-\frac{RSS/(m-p-1)}{TSS/(m-1)}$</span></td>
-<td>惩罚无关变量</td>
+<td>惩罚无关变量，跨模型比较用</td>
 </tr>
 <tr>
 <td>t 统计量</td>
 <td><span class="math-inline">$\hat\beta_i/SE(\hat\beta_i)$</span></td>
-<td>单系数显著性</td>
+<td>单系数显著性，自由度 <span class="math-inline">$m-p-1$</span></td>
 </tr>
 <tr>
 <td>F 统计量</td>
 <td><span class="math-inline">$\frac{(TSS-RSS)/p}{RSS/(m-p-1)}$</span></td>
-<td>模型整体显著性</td>
+<td>模型整体显著性（所有斜率同时为 0）</td>
 </tr>
 </tbody>
 </table>
-<h3>1.4 正则化（收缩）</h3>
+<h3>1.4 正则化：用偏差换方差</h3>
 <table>
 <thead>
 <tr>
 <th>方法</th>
 <th>罚项</th>
+<th>目标函数</th>
 <th>效果</th>
 </tr>
 </thead>
@@ -121,82 +132,174 @@
 <tr>
 <td><strong>Ridge</strong></td>
 <td><span class="math-inline">$\lambda\sum\beta_j^2$</span>（L2）</td>
-<td>全体系数收缩不为 0；<strong>专治多重共线性</strong></td>
+<td><span class="math-inline">$RSS+\lambda\sum\beta_j^2$</span></td>
+<td>系数全体收缩但不为 0；<strong>专治多重共线性</strong>（有闭式解）</td>
 </tr>
 <tr>
 <td><strong>Lasso</strong></td>
 <td><span class="math-inline">$\lambda\sum\lvert\beta_j\rvert$</span>（L1）</td>
-<td>部分系数<strong>精确为 0</strong>；特征筛选，稀疏模型</td>
+<td><span class="math-inline">$RSS+\lambda\sum\lvert\beta_j\rvert$</span></td>
+<td>部分系数<strong>精确压到 0</strong>；自动特征筛选，适合稀疏世界</td>
 </tr>
 </tbody>
 </table>
-<h3>1.5 偏差-方差分解（ML 第一性原理）</h3>
-<p><div class="math-display">$$ E[(Y-\hat f(x))^2]=\text{不可约误差}+\text{Bias}^2[\hat f]+\text{Var}[\hat f] $$</div></p>
-<p>复杂模型低偏差高方差（过拟合）；简单模型高偏差低方差（欠拟合）；正则化找平衡。</p>
-<blockquote>
-<p>💡 <strong>"五假设 → BLUE；+正态 → MLE；异方差/自相关只错标准误；Ridge 保维度、Lasso 砍维度。"</strong></p>
-</blockquote>
-<h2>二、分类</h2>
-<h3>2.1 四大核心模型</h3>
-<p><strong>① 逻辑回归（判别模型）</strong>：sigmoid 映射，logit 线性，MLE 估计，线性边界：</p>
-<p><div class="math-display">$$ P(Y=1\mid\mathbf x)=\frac{1}{1+e^{-(\beta_0+\mathbf x^\intercal\boldsymbol\beta)}},\qquad \ln\frac{P(Y=1)}{P(Y=0)}=\beta_0+\mathbf x^\intercal\boldsymbol\beta $$</div></p>
-<p><strong>② 判别分析（生成模型）</strong>：先建模 <span class="math-inline">$f_k(\mathbf x)=P(\mathbf X=\mathbf x\mid Y=k)$</span>，贝叶斯反推后验：</p>
+<p>本质（对应第 1 篇 MLE/BLUE）：正则化 = 给 OLS 加先验/约束，<strong>牺牲一点偏差换取方差大幅下降</strong>——与统计推断篇"多重比较"的教训一致：金融数据信噪比低，不加约束的 OLS 会把噪声拟合成信号。</p>
+<h3>1.5 ★ 偏差-方差分解（ML 第一性原理）</h3>
+<p><div class="math-display">$$ E[(Y-\hat f(x))^2]=\underbrace{\sigma^2}_{\text{不可约误差}}+\underbrace{\mathrm{Bias}^2[\hat f(x)]}_{\text{模型太简单}}+\underbrace{\mathrm{Var}[\hat f(x)]}_{\text{模型太敏感}} $$</div></p>
 <ul>
-<li><strong>LDA</strong>：各类<strong>共享</strong>协方差矩阵 → 线性边界</li>
-<li><strong>QDA</strong>：各类<strong>各自</strong>协方差矩阵 → 二次边界</li>
+<li><strong>偏差</strong>：用简单模型逼近真实关系的系统性误差</li>
+<li><strong>方差</strong>：模型对训练数据扰动的敏感度（换个样本结果大变）</li>
+<li><strong>不可约误差</strong>：噪声本身，任何模型都去不掉</li>
 </ul>
-<p><strong>③ k-NN（非参数）</strong>：k 小 → 高方差过拟合；k 大 → 高偏差；高维遇<strong>维度灾难</strong>。</p>
-<p><strong>④ 朴素贝叶斯（生成模型）</strong>：特征条件独立假设 <span class="math-inline">$f_k(\mathbf x)=\prod_jP(X_j=x_j\mid Y=k)$</span>；文本分类利器。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>偏差</th>
+<th>方差</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>简单模型（OLS 少特征）</td>
+<td>高</td>
+<td>低</td>
+<td>欠拟合</td>
+</tr>
+<tr>
+<td>复杂模型（深树/多特征）</td>
+<td>低</td>
+<td>高</td>
+<td>过拟合</td>
+</tr>
+</tbody>
+</table>
+<p>正则化、交叉验证、早停、剪枝——全部是这条分解式的工程化。</p>
 <blockquote>
-<p>💡 <strong>"判别直接算 P(Y|X)，生成先算 P(X|Y) 再贝叶斯反推。"</strong></p>
+<p>【记忆】<strong>"五假设 → BLUE；加正态 → MLE；异方差/自相关只错标准误（Newey-West 修）；Ridge 保维度、Lasso 砍维度；一切 = 偏差方差权衡。"</strong></p>
 </blockquote>
-<h3>2.2 性能指标（不平衡数据不能只看准确率）</h3>
+<hr />
+<h2>2. 分类：预测离散结果</h2>
+<h3>2.1 两大流派</h3>
+<p><strong>判别模型</strong>：直接建模 <span class="math-inline">$P(Y\mid X)$</span>（逻辑回归）。<br />
+<strong>生成模型</strong>：先建模每类的 <span class="math-inline">$P(X\mid Y=k)$</span>，再用贝叶斯反推 <span class="math-inline">$P(Y=k\mid X)$</span>（LDA/QDA/朴素贝叶斯）。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>核心机制</th>
+<th>决策边界</th>
+<th>估计方法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>逻辑回归</td>
+<td>sigmoid 映射，logit 线性</td>
+<td>线性</td>
+<td>MLE</td>
+</tr>
+<tr>
+<td>LDA</td>
+<td>各类共享协方差的高斯建模</td>
+<td>线性</td>
+<td>类均值+协方差</td>
+</tr>
+<tr>
+<td>QDA</td>
+<td>各类各自协方差</td>
+<td>二次</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>k-NN</td>
+<td>近邻投票</td>
+<td>非参数、局部</td>
+<td>无训练</td>
+</tr>
+<tr>
+<td>朴素贝叶斯</td>
+<td>特征条件独立</td>
+<td>由似然决定</td>
+<td>频率计数</td>
+</tr>
+</tbody>
+</table>
+<p><strong>逻辑回归细节</strong>（面试常问）：</p>
+<p><div class="math-display">$$ P(Y=1\mid\mathbf x)=\frac{1}{1+e^{-(\beta_0+\mathbf x^\intercal\boldsymbol\beta)}},\qquad \ln\frac{P(Y=1)}{P(Y=0)}=\beta_0+\mathbf x^\intercal\boldsymbol\beta $$</div></p>
+<ul>
+<li>对数几率（logit）对特征线性——系数可直接解读为"特征变动 1 单位，对数赔率变化 β"</li>
+<li>无闭式解，用 MLE 数值优化</li>
+<li><strong>与线性回归的区别</strong>：输出被压到 (0,1) 且损失是对数似然而非平方误差</li>
+</ul>
+<p><strong>朴素贝叶斯的"朴素"</strong>：假设给定类别后特征条件独立——强假设，但文本分类（词袋模型天然近似独立）表现出奇地好。</p>
+<p><strong>k-NN 要点</strong>：k 小 → 决策边界复杂 → 高方差过拟合；k 大 → 平滑 → 高偏差。高维数据距离失效（<strong>维度灾难</strong>：所有点距离趋同）。</p>
+<h3>2.2 性能指标：不平衡数据的正确姿势</h3>
+<p>金融场景天然不平衡：违约率 1%、信号触发率 5%。混淆矩阵四格 TP/FP/FN/TN：</p>
 <table>
 <thead>
 <tr>
 <th>指标</th>
 <th>公式</th>
-<th>何时关键</th>
+<th>回答的问题</th>
+<th>什么时候看它</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Accuracy</td>
-<td><span class="math-inline">$\frac{TP+TN}{\text{总数}}$</span></td>
-<td>1% 违约率下全猜"不违约"也有 99%——<strong>误导</strong></td>
+<td>(TP+TN)/总数</td>
+<td>整体猜对比例</td>
+<td><strong>不平衡时误导</strong>（全猜"不违约"也有 99%）</td>
 </tr>
 <tr>
 <td><strong>Precision</strong></td>
-<td><span class="math-inline">$\frac{TP}{TP+FP}$</span></td>
-<td><strong>误报代价高</strong>（假交易信号）</td>
+<td>TP/(TP+FP)</td>
+<td>预测为正中多少是真的</td>
+<td><strong>误报代价高</strong>（假信号浪费交易成本）</td>
 </tr>
 <tr>
 <td><strong>Recall</strong></td>
-<td><span class="math-inline">$\frac{TP}{TP+FN}$</span></td>
-<td><strong>漏报代价高</strong>（漏掉违约）</td>
+<td>TP/(TP+FN)</td>
+<td>真正例抓住多少</td>
+<td><strong>漏报代价高</strong>（漏掉违约/欺诈）</td>
 </tr>
 <tr>
-<td><strong>F1</strong></td>
-<td>P 与 R 的调和平均</td>
-<td>两者都重要</td>
+<td>F1</td>
+<td>P 与 R 调和平均</td>
+<td>两者平衡</td>
+<td>需要单一指标比较模型时</td>
 </tr>
 </tbody>
 </table>
-<p><strong>ROC / AUC</strong>：TPR 对 FPR 曲线；AUC = 随机正样本排在随机负样本前的概率（1.0 完美 / 0.5 瞎猜），对不平衡数据稳健。</p>
-<h2>三、树方法</h2>
-<h3>3.1 单棵决策树</h3>
-<p>分裂准则：分类用<strong>基尼/熵</strong>（最大化纯度提升），回归用 <strong>RSS/MSE</strong>。优点：白盒、天然非线性；缺点：<strong>高方差</strong>、易过拟合。</p>
-<h3>3.2 三大集成</h3>
-<p><strong>① Bagging（降方差）</strong>：B 个 bootstrap 样本各训一棵不剪枝树，平均/投票。<strong>OOB 误差</strong>：每树只用约 2/3 数据，剩下 1/3 免费验证。</p>
-<p><strong>② 随机森林 = Bagging + 特征随机化（去相关）</strong>：每次分裂只在随机 <span class="math-inline">$m$</span> 个特征中挑（<strong>分类 <span class="math-inline">$m=\sqrt p$</span>，回归 <span class="math-inline">$m=p/3$</span></strong>）；附赠特征重要性。</p>
-<p><strong>③ Boosting（序贯降偏差）</strong>：每轮对<strong>残差</strong>训练新树，小<strong>学习率</strong>缩放；代表 AdaBoost、GBM、XGBoost、LightGBM。精度更高但更易过拟合。</p>
+<p><strong>ROC 与 AUC</strong>：ROC 曲线 = 遍历所有阈值，画 TPR（召回）对 FPR（假阳性率）。<strong>AUC</strong> = 随机取一正一负样本，模型给正样本更高分的概率——1.0 完美、0.5 等于瞎猜，且<strong>与阈值和类别比例无关</strong>，是不平衡数据的稳健指标。</p>
 <blockquote>
-<p>💡 <strong>"Bagging 并行降方差，Boosting 串行降偏差；RF 的随机是为了让树互相不熟。"</strong></p>
+<p>【易错】类别极不平衡时，Accuracy 会撒谎：99% 不违约的数据上全猜"不违约"就有 99% 准确率，但模型毫无价值。</p>
 </blockquote>
-<h2>四、神经网络</h2>
+<hr />
+<h2>3. 树方法：非线性与交互的主力</h2>
+<h3>3.1 单棵决策树</h3>
+<p>递归选择特征与切分点，让子节点更"纯"：分类用<strong>基尼指数/熵</strong>（不纯度下降最大），回归用 <strong>RSS/MSE</strong>（子节点内方差最小）。</p>
+<p>优点：可解释、天然处理非线性与交互、不要求数值化。缺点：<strong>高方差</strong>——数据微小扰动就长出完全不同的树，容易过拟合。</p>
+<h3>3.2 ★ 集成方法：三种降误差的策略</h3>
+<p><strong>① Bagging（Bootstrap Aggregating）——并行降方差</strong></p>
+<p>从 m 个方差为 σ²、两两相关 ρ 的树取平均：</p>
+<p><div class="math-display">$$ \mathrm{Var}(\bar f)=\rho\sigma^2+\frac{1-\rho}{B}\sigma^2 $$</div></p>
+<p>B→∞ 只能消掉第二项，<strong>ρ 不降则极限仍在</strong>——这就是为什么需要随机森林。</p>
+<p><strong>② 随机森林 = Bagging + 特征随机化（压 ρ）</strong></p>
+<p>每次分裂只在随机 m 个特征里挑（分类 <span class="math-inline">$m=\sqrt p$</span>、回归 <span class="math-inline">$m=p/3$</span>），逼树之间"互相不熟"降低 ρ。附赠<strong>特征重要性</strong>（节点不纯度下降的平均量）。</p>
+<p><strong>③ Boosting——串行降偏差</strong></p>
+<p>每轮用<strong>残差</strong>（或伪残差）训练一棵小树，以小学习率 λ 缩放叠加：逐步修正前面的错误。代表：AdaBoost、GBM、XGBoost、LightGBM。精度通常更高，但学习率过大或树过多会过拟合。</p>
+<p><strong>OOB（袋外）误差</strong>：每棵 Bootstrap 树约 1/3 样本没被抽到（袋外样本），直接用它验证——免费的内建交叉验证。</p>
+<blockquote>
+<p>【记忆】<strong>"Bagging 并行降方差，Boosting 串行降偏差；RF = Bagging + 特征随机（压 ρ）；XGBoost/LightGBM 是 Boosting 的现代工业实现。"</strong></p>
+</blockquote>
+<hr />
+<h2>4. 神经网络</h2>
 <h3>4.1 结构与前向传播</h3>
 <p><div class="math-display">$$ \mathbf h^{(l)}=f^{(l)}(\mathbf W^{(l)}\mathbf h^{(l-1)}+\mathbf b^{(l)}) $$</div></p>
-<p><strong>万能近似定理</strong>：单隐层 + 非线性激活可逼近任意连续函数。</p>
+<p>每层 = 线性变换 + 非线性激活。<strong>万能近似定理</strong>：单隐层 + 非线性激活即可任意精度逼近连续函数——理论保证，但深度网络在优化与样本效率上更实用。</p>
 <h3>4.2 激活函数</h3>
 <table>
 <thead>
@@ -204,125 +307,140 @@
 <th>函数</th>
 <th>公式</th>
 <th>用途</th>
+<th>注意</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Sigmoid</td>
-<td><span class="math-inline">$\frac{1}{1+e^{-z}}$</span></td>
-<td>二分类输出；<strong>梯度消失</strong></td>
+<td><span class="math-inline">$1/(1+e^{-z})$</span></td>
+<td>二分类输出</td>
+<td>两端饱和 → <strong>梯度消失</strong></td>
 </tr>
 <tr>
 <td><strong>ReLU</strong></td>
 <td><span class="math-inline">$\max(0,z)$</span></td>
-<td><strong>隐藏层首选</strong>，解决梯度消失</td>
+<td><strong>隐藏层默认</strong></td>
+<td>计算便宜、缓解梯度消失</td>
 </tr>
 <tr>
 <td>Softmax</td>
-<td><span class="math-inline">$\frac{e^{z_i}}{\sum_j e^{z_j}}$</span></td>
+<td><span class="math-inline">$e^{z_i}/\sum_j e^{z_j}$</span></td>
 <td>多分类输出</td>
+<td>输出和为 1</td>
 </tr>
 <tr>
 <td>Tanh</td>
 <td>零中心 (−1,1)</td>
-<td>常优于 Sigmoid</td>
+<td>隐藏层（旧）</td>
+<td>零中心优于 Sigmoid</td>
 </tr>
 </tbody>
 </table>
 <h3>4.3 训练与正则化</h3>
 <ul>
-<li>损失：回归 <strong>MSE</strong>，分类<strong>交叉熵</strong>；优化：<strong>反向传播</strong>（链式法则回传梯度）+ <strong>SGD</strong></li>
-<li><strong>Dropout</strong>：随机屏蔽神经元防共适应；<strong>早停</strong>：验证集性能开始退化就停</li>
+<li>损失：回归用 <strong>MSE</strong>，分类用<strong>交叉熵</strong>（<span class="math-inline">$-\sum y\ln\hat y$</span>）</li>
+<li><strong>反向传播</strong>：链式法则从输出层逐层回传梯度，SGD 及变体更新</li>
+<li><strong>Dropout</strong>：训练时随机丢弃神经元，防共适应，等价于隐式集成</li>
+<li><strong>早停</strong>：验证集损失开始回升就停——直接对应偏差-方差权衡里的"停在方差开始涨的点"</li>
 </ul>
-<h3>4.4 金融架构选型</h3>
+<h3>4.4 金融场景的架构选型</h3>
 <table>
 <thead>
 <tr>
 <th>架构</th>
-<th>数据</th>
-<th>应用</th>
+<th>适配数据</th>
+<th>金融应用</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>FNN</td>
-<td>表格（截面特征）</td>
-<td>信用评分、因子筛选</td>
+<td>FNN 前馈</td>
+<td>表格（截面因子）</td>
+<td>因子合成、信用评分</td>
 </tr>
 <tr>
-<td><strong>RNN/LSTM/GRU</strong></td>
+<td>RNN/LSTM/GRU</td>
 <td>时间序列</td>
-<td>高频交易、波动率预测</td>
+<td>波动率预测、序列信号</td>
 </tr>
 <tr>
 <td>CNN</td>
-<td>图像类（订单簿热力图、卫星图）</td>
-<td>微观结构模式</td>
+<td>局部模式（订单簿热力图、K 线图）</td>
+<td>微观结构形态识别</td>
 </tr>
 <tr>
-<td><strong>自编码器</strong></td>
+<td>自编码器</td>
 <td>高维数据</td>
-<td>降维、异常检测</td>
+<td>降维、异常检测（市场错位）</td>
 </tr>
 </tbody>
 </table>
-<h2>五、大语言模型（LLM）</h2>
-<h3>5.1 架构与训练</h3>
+<hr />
+<h2>5. 大语言模型（LLM）</h2>
+<h3>5.1 架构与训练范式</h3>
 <ul>
-<li><strong>Transformer + 自注意力</strong>：动态加权序列上下文，捕捉长距离依赖</li>
+<li><strong>Transformer + 自注意力</strong>：每个 token 动态加权全序列上下文，解决长距离依赖</li>
 <li>Encoder-Decoder（BERT 类，理解任务）vs Decoder-Only（GPT 系，生成任务）</li>
-<li>四阶段：<strong>预训练 → 领域预训练</strong>（金融 LLM：BloombergGPT、FinGPT）<strong>→ 有监督微调 → RLHF</strong>（对齐，可靠 Agent）</li>
+<li>四阶段训练：<strong>预训练</strong>（通用语料）→ <strong>领域预训练</strong>（金融语料 → BloombergGPT/FinGPT 类）→ <strong>有监督微调</strong>（定向任务）→ <strong>RLHF</strong>（对齐人类偏好，产出可靠助手）</li>
 </ul>
 <h3>5.2 量化中的两大角色</h3>
-<p><strong>角色一：预测器</strong>（把非结构化数据变成信号）</p>
+<p><strong>角色一：预测器（把非结构化数据变成信号）</strong></p>
 <ol>
-<li><strong>情绪提取</strong>：FinBERT embedding 喂分类器；prompt GPT 级模型判新闻多空——<strong>控制传统因子后仍具预测力</strong></li>
-<li><strong>因子生成</strong>：LLM 当"因子 Agent"构想新因子并生成代码；抽取公司/事件关系构建<strong>知识图谱</strong></li>
+<li><strong>情绪提取</strong>：FinBERT embedding 喂分类器；直接 prompt 大模型判断新闻多空——学术结果：控制传统因子后仍具预测力</li>
+<li><strong>因子生成</strong>：让 LLM 基于金融理论构想新因子并生成计算代码；从文本抽取公司/事件关系构建<strong>知识图谱</strong></li>
 </ol>
-<p><strong>角色二：智能体</strong>：中心 LLM（推理规划）+ 工具（数据 API、求解器、下单接口）；多 Agent 模拟交易台（分析师/PM 协作，推理链可解释）；覆盖 数据 → 信号 → 组合优化 → 执行 全流程</p>
+<p><strong>角色二：Agent（自主决策）</strong></p>
+<p>中心 LLM 负责推理规划 + 外部工具（数据 API、优化求解器、下单接口）；多 Agent 模拟交易台分工协作（基本面/技术面/风控），推理链天然可解释；可覆盖"数据 → 信号 → 组合优化 → 执行"全链路。</p>
 <h3>5.3 四大挑战与对策</h3>
 <table>
 <thead>
 <tr>
 <th>挑战</th>
+<th>说明</th>
 <th>对策</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>幻觉</td>
-<td><strong>RAG</strong>（实时文档接地）</td>
+<td>编造事实，金融里致命</td>
+<td><strong>RAG</strong>：检索实时文档给回答接地</td>
 </tr>
 <tr>
-<td>非平稳性</td>
-<td>持续预训练 + 高频微调</td>
+<td>非平稳</td>
+<td>市场分布漂移</td>
+<td>持续预训练 + 滚动微调</td>
 </tr>
 <tr>
 <td>延迟</td>
-<td>模型压缩；只做低频任务</td>
+<td>推理慢</td>
+<td>模型压缩；只用于低频任务</td>
 </tr>
 <tr>
 <td>数据泄漏</td>
-<td>私有/领域专用 LLM</td>
+<td>训练语料"背过"历史</td>
+<td>私有/领域专用模型</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p>💡 <strong>"低频看它当预测器和研究员，高频它上不了场。"</strong></p>
+<p>【记忆】<strong>"LLM 在量化里的定位：低频信息处理与研究员，高频执行上不了场。"</strong></p>
 </blockquote>
-<h2>六、自测清单（必须掌握的考点）</h2>
+<hr />
+<h2>6. 自测清单（必须掌握的考点）</h2>
 <ul>
-<li>☐ OLS 矩阵解 + Gauss-Markov 五假设及各自违背后果</li>
-<li>☐ 异方差/自相关为什么"不改系数改标准误"，用什么修正</li>
-<li>☐ Ridge vs Lasso 的罚项与效果区别</li>
-<li>☐ 偏差-方差分解公式</li>
-<li>☐ 判别 vs 生成模型；LDA/QDA 边界形状区别</li>
-<li>☐ Precision/Recall/F1/AUC 的场景选择</li>
-<li>☐ Bagging/RF/Boosting 各降什么、怎么降</li>
-<li>☐ ReLU 为什么是隐藏层首选</li>
+<li>☐ OLS 矩阵解推导；Gauss-Markov 五假设各自违背后果</li>
+<li>☐ 异方差/自相关"不改系数改标准误"；White/Newey-West</li>
+<li>☐ Ridge 与 Lasso 的罚项、几何直觉、适用场景</li>
+<li>☐ 偏差-方差分解公式；正则化 = 偏差换方差</li>
+<li>☐ 判别 vs 生成模型；LDA/QDA 边界差异</li>
+<li>☐ 不平衡数据看 Precision/Recall/F1/AUC；Accuracy 悖论</li>
+<li>☐ Bagging 降方差公式（ρσ² + (1−ρ)σ²/B）；RF 为什么压 ρ；Boosting 降偏差</li>
+<li>☐ ReLU 解决梯度消失；Dropout/早停对应偏差-方差</li>
 <li>☐ LLM 四阶段训练 + 四大挑战对策</li>
 </ul>
-<h2>七、30 秒速查总表</h2>
+<h2>7. 30 秒速查总表</h2>
 <table>
 <thead>
 <tr>
@@ -337,7 +455,7 @@
 </tr>
 <tr>
 <td>稳健标准误</td>
-<td>White（异方差）/ Newey-West（自相关），只修 SE 不修系数</td>
+<td>White 管异方差、Newey-West 管自相关；只修 SE</td>
 </tr>
 <tr>
 <td>正则化</td>
@@ -345,28 +463,27 @@
 </tr>
 <tr>
 <td>偏差方差</td>
-<td>EPE = 不可约 + Bias² + Var</td>
+<td>EPE = 不可约 + Bias² + Var；正则化找平衡</td>
 </tr>
 <tr>
 <td>分类指标</td>
-<td>不平衡看 P/R/F1/AUC，别信 Accuracy</td>
+<td>不平衡看 P/R/F1/AUC；Accuracy 悖论</td>
 </tr>
 <tr>
 <td>树</td>
-<td>Bagging 并行降方差，Boosting 串行降偏差，RF = Bagging+特征随机</td>
+<td>Bagging 并行降方差、Boosting 串行降偏差、RF 压 ρ</td>
 </tr>
 <tr>
 <td>NN</td>
-<td>隐藏层 ReLU，分类输出 Softmax，防过拟合 Dropout+早停</td>
+<td>隐藏层 ReLU；分类输出 Softmax；Dropout+早停</td>
 </tr>
 <tr>
 <td>LLM</td>
-<td>Transformer 自注意力；量化中低频任务可用，HFT 不行</td>
+<td>自注意力捕获长依赖；低频信息处理可用，HFT 不行</td>
 </tr>
 </tbody>
 </table>
-<p><em>框架参考：OpenQuant《Quant Interview Study Guide》；Hastie《ESL》第 3、4、9–10 章；Goodfellow《Deep Learning》第 6 章。</em><br />
-<em>系列导航：[00 总目录] → [01 概率与统计] → [02 随机微积分与股价模型] → [03 衍生品定价与 BSM] → </em><em>[04 机器学习与深度学习]</em><em> → [05 线性代数与微积分] → [06 金融专题] → [07 预测市场与二元合约（补充篇）]</em></p>
+<p><em>参考：OpenQuant《Quant Interview Study Guide》；Hastie《ESL》第 3、4、9–10 章；Goodfellow《Deep Learning》第 6 章；Wasserman《All of Statistics》。</em></p>
 </article>
 <div class="pager-row"><a class="pager prev" href="03.html">← 衍生品定价与 BSM</a><a class="pager next" href="05.html">线性代数与微积分 →</a></div>
 <footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>

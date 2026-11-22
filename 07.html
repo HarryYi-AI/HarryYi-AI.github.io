@@ -23,16 +23,18 @@
 </aside>
 <main class="content">
 <article>
-<h1>Quant 面试复习手册 07｜预测市场与二元合约：logit 建模、p(1-p) 与做市机制</h1>
+<h1>Quant 面试复习手册 07｜预测市场与二元合约（完整讲解版）：logit 建模、p(1-p) 与做市机制</h1>
 <blockquote>
-<p>📌 <strong>Quant 面试复习手册 · 第 7 篇 / 共 7 篇（补充篇）</strong>（总目录）<br />
-来源：Mr.RC 两篇 X 长文（《普通人如何量化交易》知识地图、《预测市场做市圣经》，底层论文：Shaw "Toward Black-Scholes for Prediction Markets"）。<br />
-本篇价值：把手册前 6 篇的工具（鞅、风险中性、A-S 做市、数字期权）<strong>在"价格 = 概率"的市场里走一遍</strong>——是检验你是否真懂主线概念的绝佳练兵场。</p>
+<p>📌 Quant 面试复习手册 · 第 7 篇（补充篇）<br />
+预测市场（Polymarket/Kalshi）的合约价格就是概率——这让它成为检验你前 6 篇功底的完美考场：鞅、风险中性、logit 变换、做市模型全部要在"价格 = 概率"的约束下重新推导一遍。<br />
+来源：Mr.RC 两篇 X 长文（知识地图 / 预测市场做市），底层论文 Shaw "Toward Black-Scholes for Prediction Markets"。</p>
 </blockquote>
-<h2>一、二元合约：价格就是概率</h2>
-<p>预测市场（Polymarket/Kalshi）交易"事件是否会发生的合约"，YES 价格 <span class="math-inline">$p\in[0,1]$</span> = 市场认为事件发生的概率。</p>
-<p>核心数学困难：<strong>股价可以涨到无穷大，概率被"关"在 0 和 1 之间</strong>——接近边界时"越来越粘"（<span class="math-inline">$0.50\to0.55$</span> 一条新闻就够，<span class="math-inline">$0.95\to1.00$</span> 几乎要确定性证据）。不能直接套 BSM（BS 假设价格在正半轴自由移动）。</p>
-<h2>二、logit 变换：把走廊变操场</h2>
+<hr />
+<h2>1. 二元合约：价格就是概率</h2>
+<p>事件合约（如"特朗普赢得大选"的 YES）价格 <span class="math-inline">$p\in[0,1]$</span> 直接等于市场认为事件发生的概率。<span class="math-inline">$p=0.60$</span> = 市场认为 60% 概率发生。</p>
+<p><strong>核心数学困难</strong>：股价可以涨到无穷大（BSM 假设价格在正半轴自由移动），而概率被"关"在 0 和 1 之间——接近边界时"越来越粘"：<span class="math-inline">$0.50\to0.55$</span> 一条新闻就够了，<span class="math-inline">$0.95\to1.00$</span> 几乎需要确定性证据。<strong>不能直接套用 BSM。</strong></p>
+<hr />
+<h2>2. logit 变换：把走廊变操场</h2>
 <p><div class="math-display">$$ \boxed{x=\ln\frac{p}{1-p}}\qquad(\text{概率} \to \text{对数赔率；即 sigmoid 的反函数}) $$</div></p>
 <table>
 <thead>
@@ -54,23 +56,26 @@
 </tr>
 </tbody>
 </table>
-<p>[0,1] 的有限区间被映射到 <span class="math-inline">$(-\infty,+\infty)$</span>——概率在边界附近的"粘性"消失，传统数学工具可以自由使用。</p>
+<p>[0,1] 的有限区间被映射到 <span class="math-inline">$(-\infty,+\infty)$</span>——概率在边界附近的"粘性"消失，等距的 logit 变化代表等量的信息冲击，传统数学工具可以自由使用。logit 就是机器学习里 sigmoid 的反函数。</p>
 <blockquote>
-<p>⚠️ <strong>实证教训（重要）</strong>：直接在概率空间建模（Wright-Fisher、GARCH、移动平均）是死路——概率空间的小误差映射回 logit 空间会被<strong>指数级放大</strong>（论文实测 MSE 膨胀 15–19 个数量级）。<strong>先做 logit 变换，再做一切分析。</strong></p>
+<p>⚠️ <strong>实证教训（重要）</strong>：直接在概率空间建模（Wright–Fisher、GARCH、移动平均）是死路——概率空间的小误差映射到 logit 空间会被<strong>指数级放大</strong>（论文实测：映射后 MSE 膨胀 15–19 个数量级）。<strong>先做 logit 变换，再做一切分析。</strong> 一行代码 <code>x = log(p/(1-p))</code>，但它能避免灾难性误差。</p>
 </blockquote>
-<h2>三、logit 空间的信念动态：扩散 + 跳跃，漂移被鞅锁定</h2>
-<p><div class="math-display">$$ dx_t = \underbrace{\mu\,dt}_{\text{被锁定}} + \underbrace{\sigma_b\,dW_t}_{\text{信念波动率（波纹）}} + \underbrace{dJ_t}_{\text{跳跃（石头）}} $$</div></p>
+<hr />
+<h2>3. logit 空间的信念动态：扩散 + 跳跃，漂移被鞅锁定</h2>
+<p><div class="math-display">$$ dx_t=\underbrace{\mu\,dt}_{\text{被锁定}}+\underbrace{\sigma_b\,dW_t}_{\text{信念波动率（波纹）}}+\underbrace{dJ_t}_{\text{跳跃（石头）}} $$</div></p>
+<p>三个成分的分工：</p>
 <ul>
-<li><strong><span class="math-inline">$\sigma_b$</span> 信念波动率</strong>：无重大新闻时概率的日常波动速度 = 预测市场的"隐含波动率"，做市定价差的核心输入</li>
-<li><strong>跳跃</strong>：突发新闻的概率突变（辩论失误、退选）——预测市场新闻冲击远比股市频繁，纯扩散模型不够</li>
-<li><strong>漂移被完全锁定</strong>：无新信息时概率必须是鞅（<span class="math-inline">$E[p_{t+1}|\mathcal F_t]=p_t$</span>，最佳预测就是当前值）⇒ 一旦知道 <span class="math-inline">$\sigma_b$</span> 与跳跃行为，<span class="math-inline">$\mu$</span> 自动确定</li>
+<li><strong>信念波动率 σ_b</strong>：无重大新闻时概率的日常波动速度（民调更新、分析师评论、社交媒体情绪）——<strong>预测市场的"隐含波动率"</strong>，做市定价差的核心输入</li>
+<li><strong>跳跃 dJ</strong>：突发新闻导致的概率突变（辩论失误、突然退选）——预测市场的新闻冲击远比股市频繁剧烈，纯扩散模型不够</li>
+<li><strong>漂移被完全锁定</strong>：无新信息时概率必须是鞅，<span class="math-inline">$E[p_{t+1}\mid\mathcal F_t]=p_t$</span>——<strong>最佳预测就是当前概率</strong>。一旦知道 σ_b 与跳跃行为，μ 自动确定</li>
 </ul>
 <blockquote>
-<p>💡 <strong>与第 3 篇呼应</strong>：BS 里 <span class="math-inline">$\mu$</span> 被对冲消掉；这里 <span class="math-inline">$\mu$</span> 被鞅约束锁定。同一个哲学——<strong>做市商不为方向定价，只为不确定性定价</strong>。"你不需要知道明天会不会下雨，只需要为天气预报的不确定性定价。"</p>
+<p>【记忆】<strong>与第 3 篇呼应：BS 里 μ 被对冲消掉；这里 μ 被鞅约束锁定。同一个哲学——做市商不为方向定价，只为不确定性定价。</strong>"你不需要知道明天会不会下雨，只需要为天气预报的不确定性定价。"这就是做市商与赌徒的分界线。</p>
 </blockquote>
-<p>做市商仪表盘三个量：<span class="math-inline">$\sigma_b$</span>（价差宽度）、跳跃强度 <span class="math-inline">$\lambda$</span> 与跳跃大小（保险需求）、跨事件相关性 <span class="math-inline">$\rho$</span>（组合风险）。</p>
-<h2>四、★ p(1-p)：预测市场的"万能因子"</h2>
-<p>logit 空间变化 1 个单位，概率变化多少？对 <span class="math-inline">$p=\text{sigmoid}(x)$</span> 求导：</p>
+<p>做市商的仪表盘三个量：σ_b（价差宽度）、跳跃强度 λ 与跳跃大小（保险需求）、跨事件相关性 ρ（组合风险）。</p>
+<hr />
+<h2>4. ★ p(1-p)：预测市场的"万能因子"</h2>
+<p>logit 空间变化 1 个单位，概率变化多少？对 <span class="math-inline">$p=\mathrm{sigmoid}(x)$</span> 求导：</p>
 <p><div class="math-display">$$ \boxed{\Delta=\frac{dp}{dx}=p(1-p)} $$</div></p>
 <table>
 <thead>
@@ -94,24 +99,26 @@
 </table>
 <p>三重身份：</p>
 <ol>
-<li><strong>Delta（方向敏感度）</strong>：50-50 的局，一条新闻可以动 5 个百分点；99-1 的局同样新闻几乎不动 ⇒ <strong>摇摆区价差开宽，确定区价差开窄</strong></li>
-<li><strong>不确定性温度计</strong>：<span class="math-inline">$p$</span> 从 0.80 涨到 0.90，<span class="math-inline">$p(1-p)$</span> 从 0.16 降到 0.09——不确定性近乎减半，价差应收窄（一行代码可用：<code>uncertainty = p*(1-p)</code>）</li>
+<li><strong>Delta（方向敏感度）</strong>：50-50 的局一条新闻可以动 5 个百分点；99-1 的局同样新闻几乎不动 ⇒ <strong>摇摆区价差开宽，确定区价差开窄</strong></li>
+<li><strong>不确定性温度计</strong>：p 从 0.80 涨到 0.90，<span class="math-inline">$p(1-p)$</span> 从 0.16 降到 0.09——不确定性近乎减半，价差应收窄（一行代码即可上线：<code>uncertainty = p*(1-p)</code>）</li>
 <li><strong>衍生品定价核心</strong>（方差互换/走廊方差的定价输入）</li>
 </ol>
-<p>进阶：<strong>Gamma <span class="math-inline">$=p(1-p)(1-2p)$</span></strong>——好消息/坏消息影响不对称（p=0.70 时上行空间小于下行），库存风险不对称。类比传统市场的四类风险：方向（Delta）、曲率（Gamma）、信息强度（信念 Vega：对 <span class="math-inline">$\sigma_b$</span> 变化的敏感度）、跨事件（相关性 Vega + 共同跳跃）。</p>
-<p><strong>与 BSM 的精确对应</strong>：预测市场合约本质是<strong>数字期权</strong>（第 3 篇 §7.2），BS 框架下价格 <span class="math-inline">$=e^{-r\tau}\Phi(d_2)=\mathbb Q$</span> 实值概率——BSM 框架对"价格即概率"的资产同样成立，只是动力学换成了 logit 跳跃扩散。</p>
-<h2>五、logit 空间的 Avellaneda–Stoikov 做市</h2>
-<p>把第 6 篇的 A-S 模型搬到 logit 空间（<span class="math-inline">$s$</span> 换成当前 logit 值 <span class="math-inline">$x$</span>，<span class="math-inline">$\sigma^2$</span> 换成信念方差）：</p>
-<p><div class="math-display">$$ \text{保留报价}=x-q\,\gamma\,\sigma_b^2\,(T-t),\qquad \text{总价差}\approx\gamma\sigma_b^2(T-t)+\text{流动性补偿} $$</div></p>
+<p>进阶：<strong>Gamma <span class="math-inline">$=p(1-p)(1-2p)$</span></strong>——好消息/坏消息影响不对称（p=0.70 时上行空间小于下行），库存风险不对称。完整的风险四分类：方向（Delta）、曲率（Gamma）、信息强度（信念 Vega：对 σ_b 变化的敏感度）、跨事件（相关性 Vega + 共同跳跃）。</p>
+<p><strong>与 BSM 的精确对应</strong>：预测市场合约本质是<strong>数字期权</strong>（第 3 篇：价格 <span class="math-inline">$=e^{-r\tau}\Phi(d_2)=\mathbb Q$</span> 实值概率 × 贴现）——BSM 框架对"价格即概率"的资产同样成立，只是动力学换成 logit 跳跃扩散。</p>
+<hr />
+<h2>5. logit 空间的 Avellaneda–Stoikov 做市</h2>
+<p>把第 6 篇的 A-S 模型搬到 logit 空间（s 换成当前 logit 值 x，σ² 换成信念方差）：</p>
+<p><div class="math-display">$$ \text{保留报价}=x-q\gamma\sigma_b^2(T-t),\qquad \text{总价差}\approx\gamma\sigma_b^2(T-t)+\text{流动性补偿} $$</div></p>
 <p>三条规则（不用记公式）：</p>
 <ol>
 <li><strong>库存越多 → 报价越偏</strong>（多头库存：压低卖价鼓励出货、压低买价拒绝进货）</li>
-<li><strong>波动率越高 → 价差越宽</strong>（辩论之夜 <span class="math-inline">$\sigma_b$</span> 飙升，价差自动加宽）</li>
+<li><strong>波动率越高 → 价差越宽</strong>（辩论之夜 σ_b 飙升，价差自动加宽）</li>
 <li><strong>离到期越近 → 价差越窄</strong>（剩余不确定性减少）</li>
 </ol>
-<p><strong>妙处</strong>：logit 空间保持恒定价差，映射回概率空间后——由 <span class="math-inline">$\Delta=p(1-p)$</span>，<strong>极端概率附近的价差自动收窄</strong>，正好匹配流动性激励（极端区风险低 → 可以报更紧 → 拿更多奖励）。</p>
-<h2>六、衍生品工具箱直觉（对冲四类风险）</h2>
-<p>赚的是价差（稳定小钱），扛的是尾部（偶发大亏）：辩论之夜波动率 ×5、选举之夜三个相关市场同崩。传统市场的对冲工具及预测市场对应物：</p>
+<p><strong>妙处</strong>：logit 空间保持恒定价差，映射回概率空间后——由 <span class="math-inline">$\Delta=p(1-p)$</span>，<strong>极端概率附近的价差自动收窄</strong>（p≈0.99 时 logit 单位变化只动 0.01% 概率），恰好匹配流动性激励：极端区风险低 → 报得更紧 → 拿更多奖励。模型自动做到了这一点。</p>
+<hr />
+<h2>6. 衍生品工具箱：对冲四类风险</h2>
+<p>做市的矛盾：赚的是价差（每天稳定小钱），扛的是尾部（偶发巨亏）——辩论夜波动率 ×5、选举夜三个相关市场同崩、概率从 0.60 跳到 0.90。传统期权市场的解法与预测市场的对应物：</p>
 <table>
 <thead>
 <tr>
@@ -126,7 +133,7 @@
 <td>信念方差互换</td>
 <td>整体波动率飙升</td>
 <td>VIX/方差互换</td>
-<td><span class="math-inline">$\sigma_b^2$</span> + 跳跃方差</td>
+<td>σ_b² + 跳跃方差</td>
 </tr>
 <tr>
 <td>走廊方差</td>
@@ -144,18 +151,19 @@
 <td>首次触达票据</td>
 <td>极端价格（概率突破 0.80）</td>
 <td>障碍期权</td>
-<td><span class="math-inline">$\sigma_b,\ \lambda$</span>（首次通过时间）</td>
+<td>σ_b, λ（首次通过时间）</td>
 </tr>
 </tbody>
 </table>
-<p><strong>逻辑链</strong>：衍生品 → 对冲 → 敢开窄价差 → 好流动性 → 大市场。这个正循环 1973 年在期权市场发生过一次。</p>
-<h2>七、★ LMSR 做市机制 = Softmax</h2>
+<p><strong>逻辑链</strong>：衍生品 → 对冲 → 敢开窄价差 → 好流动性 → 大市场。这个正循环 1973 年在期权市场发生过一次（BSM → CBOE），现在轮到预测市场。</p>
+<hr />
+<h2>7. ★ LMSR 做市机制 = Softmax</h2>
 <p>早期预测市场 AMM 用 Robin Hanson 的<strong>对数市场评分规则（LMSR）</strong>：</p>
 <p><div class="math-display">$$ C(q)=b\ln\sum_i e^{q_i/b},\qquad p_i=\frac{e^{q_i/b}}{\sum_j e^{q_j/b}} $$</div></p>
-<p>（<span class="math-inline">$q_i$</span> = 结果 <span class="math-inline">$i$</span> 的未平仓份额，<span class="math-inline">$b$</span> = 流动性参数。）</p>
+<p>（<span class="math-inline">$q_i$</span> = 结果 i 的未平仓份额，b = 流动性参数：b 越大市场越"厚"。）</p>
 <ul>
-<li><strong>价格公式就是 Softmax</strong>——与 ChatGPT 预测下一个词的公式数学等价（都是"把一组数字变成合法概率分布，且放大差异"）</li>
-<li>优雅性质：所有结果价格之和恒为 1；无限流动性；做市商最大亏损被锁定在 <span class="math-inline">$b\ln n$</span></li>
+<li><strong>价格公式就是 Softmax</strong>——与 ChatGPT 预测下一个词的公式数学等价：都是"把一组数字变成合法概率分布，并放大差异"</li>
+<li>三大优雅性质：所有结果价格之和恒为 1（满足概率公理）；无限流动性（永远有人跟你交易）；做市商最大亏损被锁定在 <span class="math-inline">$b\ln n$</span></li>
 </ul>
 <p><strong>LMSR vs CLOB（Polymarket 现用机制）</strong>：</p>
 <table>
@@ -173,14 +181,14 @@
 <td>买卖双方挂单博弈</td>
 </tr>
 <tr>
-<td>流动性</td>
+<td>流动性来源</td>
 <td>系统资金池自动提供</td>
 <td><strong>做市商主动挂单 = 市场生命线</strong></td>
 </tr>
 <tr>
 <td>价差</td>
 <td>系统参数决定</td>
-<td>做市商之间内卷竞争</td>
+<td>做市商之间竞争内卷</td>
 </tr>
 <tr>
 <td>对冲需求</td>
@@ -190,16 +198,17 @@
 </tbody>
 </table>
 <blockquote>
-<p>💡 CLOB 下算错概率或没对冲相关性，挂单会被更聪明的量化资金瞬间吃掉——<strong>做市从"跟公式交易"变成"跟人博弈"</strong>，这正是第 6 篇 A-S + 逆向选择账本的用武之地。</p>
+<p>【记忆】<strong>CLOB 下算错概率或没对冲相关性，挂单会被更聪明的量化资金瞬间吃掉——做市从"跟公式交易"变成"跟人博弈"，这正是 A-S 模型 + 逆向选择账本的用武之地。</strong></p>
 </blockquote>
-<h2>八、校准：从脏数据到可用参数</h2>
-<p>模型参数（<span class="math-inline">$\sigma_b,\lambda$</span>,跳跃大小,微结构噪声 <span class="math-inline">$\eta$</span>）必须从真实数据提取。三步：</p>
-<ol>
-<li><strong>Kalman 滤波去噪</strong>：观测到的价格 = 真实信念 + 噪声（价差噪声/深度不足/微结构噪声）。Kalman = "模型预测 vs 实际观测"的最优加权——流动性好（观测噪声小）就信观测，流动性差就信模型。类比：GPS 信号强信 GPS，进隧道信速度计</li>
-<li><strong>EM 算法分离扩散与跳跃</strong>：不分离会把跳跃算进日常波动率 → 高估 <span class="math-inline">$\sigma_b$</span> → 价差开太宽赚不到钱。E 步猜"哪些变动是跳跃"，M 步分别估计两组参数，迭代至收敛；每轮 M 步后重算风险中性漂移——<strong>鞅约束是地基，不能破坏</strong></li>
-<li><strong>信念波动率曲面</strong>：波动率 ×（时间，概率位置）的二维曲面（对标期权隐波曲面）。曲面在辩论前变陡 ⇒ 提前加宽价差；摇摆区曲面高 ⇒ 确定区可以报更窄。<strong>日程感知</strong>：已知新闻窗口（辩论/投票日）自动提高跳跃强度预测——普通模型完全忽略这类公开信息</li>
-</ol>
-<h2>九、与手册主线的连接</h2>
+<hr />
+<h2>8. 校准：从脏数据到可用参数</h2>
+<p>模型参数（σ_b、λ、跳跃大小、微结构噪声 η）必须从真实数据提取。三步流水线：</p>
+<p><strong>① Kalman 滤波去噪</strong>：观测到的价格 = 真实信念 + 噪声（三种噪声源：买卖价差、深度不足、微结构噪声）。Kalman = "模型预测 vs 实际观测"的最优加权：流动性好（观测噪声小）就信观测，流动性差就信模型。类比：GPS 信号强信 GPS，进隧道信速度计。</p>
+<p><strong>② EM 算法分离扩散与跳跃</strong>：不分离会把跳跃算进日常波动率 → 高估 σ_b → 价差开太宽赚不到钱。E 步猜"哪些变动是跳跃"，M 步分别估计两组参数，迭代至收敛。<strong>关键约束：每轮 M 步后重算风险中性漂移，保证鞅性不被破坏——这是整个框架的地基。</strong></p>
+<p><strong>③ 信念波动率曲面</strong>：波动率 ×（时间，概率位置）的二维曲面（对标期权隐波曲面）。曲面在辩论前变陡 ⇒ 提前加宽价差；摇摆区曲面高 ⇒ 确定区可报更窄。<strong>日程感知</strong>：已知新闻窗口（辩论/投票日）自动提高跳跃强度预测——普通模型完全忽略这类公开信息。</p>
+<p><strong>实验验证</strong>：论文用 MSE/MAE 对比四种基线（随机游走、恒定波动率、Wright–Fisher、GARCH），logit 模型全面碾压——两大原因：鞅约束消除系统性偏差；跳跃与扩散分离使平静期波动率不被污染。</p>
+<hr />
+<h2>9. 与手册主线的连接</h2>
 <table>
 <thead>
 <tr>
@@ -210,7 +219,7 @@
 <tbody>
 <tr>
 <td>漂移被鞅锁定</td>
-<td>03 风险中性（<span class="math-inline">$\mu$</span> 被对冲/替换）</td>
+<td>03 风险中性（μ 被对冲/替换）</td>
 </tr>
 <tr>
 <td><span class="math-inline">$p(1-p)$</span> = Delta</td>
@@ -234,25 +243,26 @@
 </tr>
 <tr>
 <td>Kalman/EM 校准</td>
-<td>01 §4 MLE + 06 §4 工作流</td>
+<td>01 MLE + 06 工作流</td>
 </tr>
 <tr>
 <td>过拟合敬畏/半凯利</td>
-<td>01 §4.3 多重比较 + 06 §3.3</td>
+<td>01 多重比较 + 06 Kelly</td>
 </tr>
 </tbody>
 </table>
-<h2>十、自测清单（必须掌握的考点）</h2>
+<hr />
+<h2>10. 自测清单（必须掌握的考点）</h2>
 <ul>
 <li>☐ 为什么概率不能直接套 BSM；logit 变换解决什么</li>
-<li>☐ "概率空间建模是死路"的定量教训</li>
-<li>☐ <span class="math-inline">$\sigma_b$</span>、跳跃、鞅锁定漂移——三件事各管什么</li>
-<li>☐ <span class="math-inline">$p(1-p)$</span> 的三重身份 + 极端区价差自动收窄的机制</li>
+<li>☐ "概率空间建模是死路"的定量教训（15–19 个数量级）</li>
+<li>☐ σ_b、跳跃、鞅锁定漂移——三件事各管什么</li>
+<li>☐ <span class="math-inline">$p(1-p)$</span> 三重身份 + 极端区价差自动收窄的机制</li>
 <li>☐ A-S 三规则；衍生品工具箱与四类风险的对应</li>
-<li>☐ LMSR = Softmax；LMSR vs CLOB 做市商角色差异</li>
-<li>☐ Kalman 滤波与 EM 各解决什么问题</li>
+<li>☐ LMSR = Softmax；三大性质；LMSR vs CLOB 做市商角色差异</li>
+<li>☐ Kalman 与 EM 各解决什么问题；鞅约束为什么是地基</li>
 </ul>
-<h2>十一、30 秒速查总表</h2>
+<h2>11. 30 秒速查总表</h2>
 <table>
 <thead>
 <tr>
@@ -263,15 +273,15 @@
 <tbody>
 <tr>
 <td>logit 变换</td>
-<td><span class="math-inline">$x=\ln\frac{p}{1-p}$</span>：走廊变操场；先变换再建模</td>
+<td><span class="math-inline">$x=\ln\frac p{1-p}$</span>：走廊变操场；先变换再建模</td>
 </tr>
 <tr>
-<td>信念波动率 <span class="math-inline">$\sigma_b$</span></td>
+<td>信念波动率 σ_b</td>
 <td>预测市场的隐含波动率，价差宽度的核心输入</td>
 </tr>
 <tr>
 <td>鞅锁定漂移</td>
-<td>最佳预测 = 当前概率 ⇒ <span class="math-inline">$\mu$</span> 不用猜</td>
+<td>最佳预测 = 当前概率 ⇒ μ 不用猜</td>
 </tr>
 <tr>
 <td><span class="math-inline">$p(1-p)$</span></td>
@@ -291,8 +301,7 @@
 </tr>
 </tbody>
 </table>
-<p><em>来源：Mr.RC 两篇 X 长文；底层论文 Shaw "Toward Black-Scholes for Prediction Markets"；Hanson (2003) LMSR；Avellaneda &amp; Stoikov (2008)。</em><br />
-<em>系列导航：[00 总目录] → [01 概率与统计] → [02 随机微积分与股价模型] → [03 衍生品定价与 BSM] → [04 机器学习与深度学习] → [05 线性代数与微积分] → [06 金融专题] → </em><em>[07 预测市场与二元合约（补充篇）]</em>**</p>
+<p><em>来源：Mr.RC 两篇 X 长文；底层论文 Shaw "Toward Black-Scholes for Prediction Markets"；Hanson (2003) LMSR；Avellaneda &amp; Stoikov (2008)。</em></p>
 </article>
 <div class="pager-row"><a class="pager prev" href="06.html">← 金融专题：做市、组合与建模</a></div>
 <footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>

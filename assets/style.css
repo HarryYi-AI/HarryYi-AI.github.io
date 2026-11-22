@@ -156,3 +156,26 @@ footer {
   .content { margin-left: 0; padding: 22px 18px 50px; }
   .home { padding: 28px 16px; }
 }
+
+/* ---------- 个人主页 & 关于页 ---------- */
+.hero.personal { text-align: center; padding-top: 30px; }
+.avatar {
+  width: 88px; height: 88px; border-radius: 50%;
+  background: #0f4c81; color: #fff; font-size: 40px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;
+}
+.avatar.big { width: 110px; height: 110px; font-size: 50px; }
+.hero.personal h1 { margin: 0 0 6px; }
+.tagline { font-size: 16px; color: #1a1a1a; font-weight: 600; margin: 0 0 8px; }
+.hero .sub { color: #5a6b7d; font-size: 14.5px; margin: 0 0 14px; }
+.social { display: flex; gap: 16px; justify-content: center; font-size: 14px; align-items: center; }
+.social .muted { color: #9aa7b4; }
+.about-page { max-width: 780px; margin: 0 auto; padding: 40px 22px; }
+.about-hero { text-align: center; padding: 16px 0 6px; }
+.about-hero h1 { font-size: 26px; color: #1a1a1a; margin: 10px 0 6px; }
+.bio-line { color: #5a6b7d; font-size: 15px; margin: 4px 0; }
+.quote { color: #8a97a5; font-style: italic; font-size: 14px; }
+.about-body h2 { font-size: 18px; color: #0f4c81; margin: 28px 0 10px; }
+.about-body p, .about-body li { font-size: 15px; line-height: 1.9; color: #333; }
+.about-body strong { color: #0f4c81; }
+.back { margin-top: 26px; }

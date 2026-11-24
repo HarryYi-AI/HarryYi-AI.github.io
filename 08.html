@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · 防泄漏工程：Purged Walk-Forward | Quant 面试复习手册</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <a class="brand" href="index.html">Harry · Quant 手册</a>
+  <nav><a class="nav-item" href="00.html"><span class="nav-num">00</span>总目录与快速通道</a>
+<a class="nav-item" href="01.html"><span class="nav-num">01</span>概率与统计</a>
+<a class="nav-item" href="02.html"><span class="nav-num">02</span>随机微积分与股价模型</a>
+<a class="nav-item" href="03.html"><span class="nav-num">03</span>衍生品定价与 BSM</a>
+<a class="nav-item" href="04.html"><span class="nav-num">04</span>机器学习与深度学习</a>
+<a class="nav-item" href="05.html"><span class="nav-num">05</span>线性代数与微积分</a>
+<a class="nav-item" href="06.html"><span class="nav-num">06</span>金融专题：做市、组合与建模</a>
+<a class="nav-item" href="07.html"><span class="nav-num">07</span>预测市场与二元合约</a>
+<a class="nav-item active" href="08.html"><span class="nav-num">08</span>防泄漏工程：Purged Walk-Forward</a></nav>
+  <div class="sidebar-foot"><a href="index.html">⌂ 主页</a> · <a href="about.html">关于</a></div>
+</aside>
+<main class="content">
+<article>
+<h1>Quant 面试复习手册 08｜防泄漏工程（完整讲解版）：Purged Walk-Forward 代码精读</h1>
+<blockquote>
+<p>📌 Quant 面试复习手册 · 第 8 篇（补充篇）<br />
+本篇是第 1 篇（多重比较/样本内外纪律）与第 4 篇（机器学习）的工程落地：用真实的两个切分函数，讲透时序回测里最核心的防泄露机制——<strong>Purge（挖标签泄露）+ Embargo（堵自相关传染）+ 三层验证隔离</strong>。<br />
+参考：López de Prado《Advances in Financial Machine Learning》第 7 章（Purged K-Fold &amp; Embargo）。</p>
+</blockquote>
+<hr />
+<h2>1. 为什么时序回测必须"挖洞"：三条泄露通道</h2>
+<p>普通 K-Fold 交叉验证在时序数据上是错的，因为它随机打乱时间。量化回测有三条独特的泄露通道：</p>
+<table>
+<thead>
+<tr>
+<th>泄露通道</th>
+<th>出问题的场景</th>
+<th>堵法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 标签泄露（Purge）</td>
+<td>训练集最后几天的样本，标签 Y 用到了测试期内的价格</td>
+<td>挖掉 horizon 天</td>
+</tr>
+<tr>
+<td>② 自相关传染（Embargo）</td>
+<td>相邻两天特征高度重叠（60 日滚动窗口），训练窗尾部信息渗进测试期</td>
+<td>再挖 embargo 天</td>
+</tr>
+<tr>
+<td>③ 超参过拟合</td>
+<td>调参时偷看了外层测试集</td>
+<td>三层隔离：inner_train / inner_val / 外层 test</td>
+</tr>
+</tbody>
+</table>
+<p>具体到标签定义：t 日收盘拿到数据算信号 → t+1 日收盘才能建仓（1 天执行延迟）→ 持有 h 天。所以 <strong>t 日样本的标签 Y 用到了 t+1+h 天的价格</strong>。如果训练集保留到测试期前一天，那几个样本的标签窗口直接跨进测试期——模型等于提前看到了答案。</p>
+<hr />
+<h2>2. walk_forward_splits 逐行精读</h2>
+<pre><code class="language-python">def walk_forward_splits(dates, first_test_year=2018, last_test_year=2025,
+                        horizon=5, embargo=5, holdout_start=&quot;2025-11-10&quot;):
+    if not dates.is_monotonic_increasing:
+        raise ValueError(&quot;dates must be sorted in ascending order&quot;)
+    elig_dates = dates[dates &lt; pd.Timestamp(holdout_start)] if holdout_start is not None else dates
+    for year in range(first_test_year, last_test_year + 1):
+        test = elig_dates[elig_dates.year == year]
+        if len(test) == 0:
+            continue
+        start = int(elig_dates.get_loc(test[0]))
+        cutoff = max(start - horizon - embargo, 0)
+        train = elig_dates[:cutoff]
+        if len(train) == 0:
+            continue
+        yield train, test</code></pre>
+<h3>2.1 逐行拆解</h3>
+<p><strong>① 参数即设计决策</strong>：</p>
+<ul>
+<li><code>horizon=5</code>：标签周期（预测未来 5 天收益）——它同时决定 purge 的宽度。标签定义"t 日信号 → t+1 收盘建仓 → 持有 h 天"意味着 t 日样本的标签用到 t+1+h 的价格</li>
+<li><code>embargo=5</code>：额外的隔离带。特征是 60 日滚动窗口算的，相邻两天特征高度自相关——purge 堵住标签泄露的"明道"，embargo 再堵自相关传染的"暗道"。合计挖掉 horizon+embargo = 10 个交易日</li>
+<li><code>holdout_start="2025-11-10"</code>：之后的日期被永久挖出池子，只留给最终 12 个月留出集——<strong>测试集只碰一次</strong>纪律的代码化</li>
+</ul>
+<p><strong>② 逐年滚动（生成器 yield）</strong>：<code>for year in range(2018, 2026)</code>——2018 做测试、之前年份做训练；下一轮 2019 做测试、训练集扩大……Walk-Forward 的标准形态。用生成器逐年按需产出，内存友好且天然表达"滚动"语义。</p>
+<p><strong>③ 定位用行号，裁剪按行数</strong>：</p>
+<pre><code class="language-python">start = int(elig_dates.get_loc(test[0]))       # 第一个测试日的行位置
+cutoff = max(start - horizon - embargo, 0)     # 往回数 10 行
+train = elig_dates[:cutoff]</code></pre>
+<p><code>get_loc</code> 返回<strong>位置索引</strong>。裁剪 <code>[:cutoff]</code> 按<strong>行数（矩阵行）</strong>走，不是按日历日期——如果测试年第一个月有停牌空洞，按日期减天数会少挖。<strong>精确挖掉 10 行交易日</strong>是这段代码的硬承诺。</p>
+<p><strong>④ 被挖掉的 10 天两边都不属于</strong>——既不在训练集也不在测试集，直接丢弃。这正是"Purge"的字面意思。</p>
+<h3>2.2 图示（2019 测试年为例）</h3>
+<pre><code class="language-text">时间轴： 2010 ────────────────────── 2018 ──────│ purged 10 天 │────── 2019 ──→
+         └──────── train（训练集）──────┘              └──── test（2019 全年）────┘
+                                          ↑
+                              horizon(5) + embargo(5) = 10 个交易日，两边都不要</code></pre>
+<hr />
+<h2>3. split_train_inner_val：超参数的"受操控试错场"</h2>
+<pre><code class="language-python">def split_train_inner_val(train_dates, val_days=242, horizon=5, embargo=5):
+    if len(train_dates) &lt;= val_days + horizon + embargo + 60:
+        val_days = max(60, len(train_dates) // 5)
+    val_start = len(train_dates) - val_days
+    inner_val = train_dates[val_start:]
+    inner_train_end = max(val_start - horizon - embargo, 0)
+    inner_train = train_dates[:inner_train_end]
+    return inner_train, inner_val</code></pre>
+<h3>3.1 它解决什么问题</h3>
+<p>超参数（Ridge 的 α、LightGBM 的叶子数、早停轮数）必须找一个"试错场"，但这个场<strong>绝不能是外层 walk-forward 的 test 年</strong>——在测试集上调参 = 多重比较过拟合（第 1 篇）。解法：从训练窗内部再切一块<strong>时间上最靠后</strong>的子集做内验证。</p>
+<h3>3.2 三个设计要点</h3>
+<ol>
+<li><strong>内验证 = 时间窗最后一段，且严格时序</strong>——绝不能随机 K-Fold：随机打乱时序做交叉验证，训练集混入测试期邻域样本，交叉验证分数虚高。时序 ML 第一诫：<strong>验证集永远取时间上最后的一段</strong></li>
+<li><strong>同样的 purge + embargo</strong>：<code>inner_train_end = val_start − 10</code>——内训练窗与内验证窗之间挖掉同样的 10 天，泄露机制完全相同，防法也相同</li>
+<li><strong>最小长度保护</strong>：训练窗 ≤ 242+10+60 行时，固定 1 年验证集会把训练挤空；退化规则 <code>val_days = max(60, len//5)</code>，且 <code>+60</code> 保证内训练至少剩 60 行</li>
+</ol>
+<h3>3.3 三层隔离结构（整个项目防过拟合的骨架）</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>用途</th>
+<th>访问规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>inner_train</td>
+<td>拟合模型参数</td>
+<td>随便碰</td>
+</tr>
+<tr>
+<td>inner_val</td>
+<td>选超参数（α、num_leaves、早停轮数）</td>
+<td>只在训练窗内部，时间上最靠后</td>
+</tr>
+<tr>
+<td>walk-forward test（逐年）</td>
+<td>报告最终性能</td>
+<td>每年一次，调参信息绝不回流</td>
+</tr>
+</tbody>
+</table>
+<p><strong>为何内验证取"时间上最后一段"</strong>：它最接近真实使用场景（用过去预测未来），且与外层测试年的分布漂移程度最相似——用最近的过去选超参，泛化到最近的将来最稳。</p>
+<hr />
+<h2>4. 与全项目的咬合关系</h2>
+<table>
+<thead>
+<tr>
+<th>上游设计决策</th>
+<th>在这段代码里的体现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"5d/20d 是标签周期先验，不是网格搜索的超参"</td>
+<td>horizon 是函数入参（5），它同时决定 purge 宽度；换成 20d 标签时 purge 自动变 25 天，不用改代码</td>
+</tr>
+<tr>
+<td>"20d 窗口重叠 → 有效样本少 → Newey-West"</td>
+<td>标签跨期重叠正是 purge 要处理的问题的另一面：评估端用 NW 修 t 值，切分端用 purge 防泄露</td>
+</tr>
+<tr>
+<td>"留出集只跑一次"</td>
+<td><code>holdout_start</code> 在最外层挖掉，inner/walk-forward 全都碰不到</td>
+</tr>
+<tr>
+<td>"调参绝不偷看测试集"</td>
+<td>超参选择被强制圈死在 inner_val</td>
+</tr>
+<tr>
+<td>"多日窗口重叠 → 自相关"</td>
+<td>embargo 的存在理由：60 日滚动窗口特征相邻日高度重叠</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. 面试追问预演</h2>
+<p><strong>Q1：为什么不用随机 K-Fold？</strong><br />
+时序样本相邻高度自相关，随机打乱后训练集混入测试期邻域样本，交叉验证分数虚高。正确做法：时序切分 + purge/embargo。</p>
+<p><strong>Q2：embargo 为什么是 5，不是 60？</strong><br />
+权衡问题：embargo 每多一天，训练集就少一天（偏差增加），换取泄露风险下降。5 ≈ 标签周期同量级；严格讲可以设为"特征最长窗口的自相关衰减长度"（本项目 60 日窗口可讨论更长），但样本代价必须评估。</p>
+<p><strong>Q3：horizon 改成 20，代码要改吗？</strong><br />
+不用改代码——purge 自动变 20+5=25 天（入参驱动）。但每个测试年要多挖 15 天训练样本，早期年份可能触发 <code>continue</code> 跳过。</p>
+<p><strong>Q4：<code>get_loc</code> 按行裁剪和按日期裁剪有区别吗？</strong><br />
+有。若测试年第一个月有停牌空洞，按日历日期减 10 天会少挖行（空洞日不占行）；按行数裁剪保证精确挖掉 10 行交易日。停牌频繁的 A 股数据里这个区别是实质性的。</p>
+<p><strong>Q5：为什么用生成器 yield 而不是返回列表？</strong><br />
+逐年按需产出，内存友好，且天然表达"滚动扩大训练集"的语义；调用方训练完一年再要下一年。</p>
+<hr />
+<h2>6. 自测清单（必须掌握的考点）</h2>
+<ul>
+<li>☐ 三条泄露通道（标签泄露/自相关传染/超参过拟合）与三个堵法（purge/embargo/三层隔离）一一对应</li>
+<li>☐ purge 宽度 = horizon + embargo；horizon 改 20 时 purge 自动变 25</li>
+<li>☐ 裁剪按行数不按日历日期；停牌空洞下的差异</li>
+<li>☐ 内验证必须取时间最后一段；随机 K-Fold 为什么错</li>
+<li>☐ 三层隔离：inner_train / inner_val / walk-forward test 各自的访问规则</li>
+<li>☐ 最小长度保护逻辑（val_days 退化规则）</li>
+<li>☐ embargo 的权衡本质：样本变少（偏差）vs 泄露风险下降</li>
+</ul>
+<h2>7. 30 秒速查总表</h2>
+<table>
+<thead>
+<tr>
+<th>考点</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purge</td>
+<td>挖 horizon 天：堵标签跨期泄露</td>
+</tr>
+<tr>
+<td>Embargo</td>
+<td>再挖隔离带：堵特征自相关传染</td>
+</tr>
+<tr>
+<td>裁剪方式</td>
+<td>按行数（交易日），不按日历日期</td>
+</tr>
+<tr>
+<td>切分纪律</td>
+<td>时序顺序切分；内验证 = 时间最后一段</td>
+</tr>
+<tr>
+<td>三层隔离</td>
+<td>inner_train 拟合 / inner_val 选超参 / 外层 test 只报告</td>
+</tr>
+<tr>
+<td>horizon 变更</td>
+<td>入参驱动，purge 自动 = horizon + embargo</td>
+</tr>
+<tr>
+<td>随机 K-Fold</td>
+<td>时序数据禁用（自相关泄露）</td>
+</tr>
+</tbody>
+</table>
+<p><em>参考：López de Prado《Advances in Financial Machine Learning》第 7 章（Purged K-Fold CV &amp; Embargo）；第 11 章（回测的危害：多重检验、过拟合）。</em></p>
+</article>
+<div class="pager-row"><a class="pager prev" href="07.html">← 预测市场与二元合约</a></div>
+<footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>
+</main>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.querySelector("article"), {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>

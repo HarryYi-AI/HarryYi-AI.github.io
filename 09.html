@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · 因子研究方法论：FM 回归与检验体系 | Quant 面试复习手册</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <a class="brand" href="index.html">Harry · Quant 手册</a>
+  <nav><a class="nav-item" href="00.html"><span class="nav-num">00</span>总目录与快速通道</a>
+<a class="nav-item" href="01.html"><span class="nav-num">01</span>概率与统计</a>
+<a class="nav-item" href="02.html"><span class="nav-num">02</span>随机微积分与股价模型</a>
+<a class="nav-item" href="03.html"><span class="nav-num">03</span>衍生品定价与 BSM</a>
+<a class="nav-item" href="04.html"><span class="nav-num">04</span>机器学习与深度学习</a>
+<a class="nav-item" href="05.html"><span class="nav-num">05</span>线性代数与微积分</a>
+<a class="nav-item" href="06.html"><span class="nav-num">06</span>金融专题：做市、组合与建模</a>
+<a class="nav-item" href="07.html"><span class="nav-num">07</span>预测市场与二元合约</a>
+<a class="nav-item" href="08.html"><span class="nav-num">08</span>防泄漏工程：Purged Walk-Forward</a>
+<a class="nav-item active" href="09.html"><span class="nav-num">09</span>因子研究方法论：FM 回归与检验体系</a>
+<a class="nav-item" href="10.html"><span class="nav-num">10</span>因子实证与代码精读（A 股）</a></nav>
+  <div class="sidebar-foot"><a href="index.html">⌂ 主页</a> · <a href="about.html">关于</a></div>
+</aside>
+<main class="content">
+<article>
+<h1>Quant 面试复习手册 09｜因子研究方法论（完整讲解版）：分组排序、Fama–MacBeth 与检验体系</h1>
+<blockquote>
+<p>📌 Quant 面试复习手册 · 第 9 篇（补充篇）<br />
+本篇用计量经济学语言把量化最核心的研究方法串成体系：<strong>CAPM/APT → 时序检验与 GRS → 两步法横截面回归与 Shanken 调整 → Fama–MacBeth 回归 → 排序法（单排/双排）→ 异象检验 → 因子动物园的哲学</strong>。<br />
+学完本篇，你项目里的风格回归、<span class="math-inline">$t_{NW}$</span> 显著性、以及"这个因子的经济学逻辑是什么"这类面试题将彻底打通。<br />
+来源：课程《因子模型及相关计量经济学概述》（含手写批注）+ Cochrane《Asset Pricing》。</p>
+</blockquote>
+<hr />
+<h2>1. 从 CAPM 出发：因子模型的骨架</h2>
+<p><div class="math-display">$$ E[R_i]-R_f=\beta_i(E[R_M]-R_f)\qquad\Longleftrightarrow\qquad E[R_i^e]=\beta_i\,E[R_M^e] $$</div></p>
+<p>文字版直觉：<strong>证券 i 的超额收益期望 = βᵢ × 另一个东西的超额收益期望</strong>。这个"另一个东西"就是<strong>因子（factor）</strong>——CAPM 里因子超额收益 = 全市场超额收益；<span class="math-inline">$\beta_i$</span> = 证券 i 在这个因子上的<strong>因子暴露（factor exposure / factor loading）</strong>。</p>
+<p>CAPM 的模型假设（考试要点）：相同预期、无限制借贷、单期财富最大化、流动性好无交易成本、价格接受者、资产数目确定。</p>
+<p><strong>实证关注点</strong>：不同的 <span class="math-inline">$\beta_i$</span> 是否对应了不一样的收益？——这就是<strong>横截面选股</strong>的理论起点。</p>
+<h2>2. APT 与 α 的两义性：这个话题最"值钱"的部分</h2>
+<p>多因子版本（APT）：</p>
+<p><div class="math-display">$$ E[R_i^e]=\beta_i^\intercal\lambda $$</div></p>
+<p>K 个因子、λ 是 K 维<strong>因子风险溢价</strong>向量（应当为正——承担风险需要报酬）。实际数据未必符合，此时出现<strong>定价误差 α</strong>：</p>
+<p><div class="math-display">$$ E[R_i^e]=\alpha_i+\beta_i^\intercal\lambda $$</div></p>
+<p><strong>αᵢ 显著不为 0 的三种解释</strong>（面试标准答案）：</p>
+<ol>
+<li><strong>因子没找全</strong>：加入新的因子后，αᵢ 变得不显著了</li>
+<li><strong>模型本身有问题</strong>：也许是非线性？统计上分解总能做，但对投资而言，单纯分解出 latent factors 没有含义——我们希望找到<strong>数据之间的联系</strong>，而非数据本身的分解</li>
+<li><strong>市场对该资产出现了错误定价</strong>，形成套利机会——该资产被称为一个<strong>异象（anomaly）</strong>。若 αᵢ 为正，买入资产、卖出因子组合。若左边是基金经理的组合收益，α 就是基金经理超出常人的能力</li>
+</ol>
+<p><strong>理论之争（本书最哲学的部分）</strong>：因子长期平均收益更高，长期持有即可获得更高回报——<strong>那它还是"风险补偿"吗？</strong> 风险意味着概率上的不确定，但长期平均会把概率波动"平均掉"。</p>
+<table>
+<thead>
+<tr>
+<th>解释</th>
+<th>因子收益来源</th>
+<th>推论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>风险补偿</strong>（主流资产定价）</td>
+<td>因子在<strong>坏状态（bad states）</strong>下表现更差，投资者厌恶这种风险，要求更高期望收益</td>
+<td>风险 ≠ 波动率，而是资产收益与<strong>宏观状态/边际效用</strong>的协方差</td>
+</tr>
+<tr>
+<td><strong>行为金融/误定价</strong></td>
+<td>投资者行为偏差、机构约束（杠杆限制）、套利成本、职业风险</td>
+<td>因子收益不是风险补偿，而是<strong>市场效率不完全</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>识别难题</strong>：现代定价核心关系 <span class="math-inline">$E[mR_i]=1$</span>，其中 m 是<strong>随机贴现因子（SDF）</strong>——但 m <strong>不可直接观察</strong>。我们能观察资产收益，却无法观察真实的风险价格 ⇒ 因子收益高，是风险补偿还是误定价，<strong>数据本身很难区分</strong>。</p>
+<p><strong>对因子模型的启示</strong>：任何稳定存在的收益模式都可能被解释为"新的风险因子" ⇒ <strong>factor zoo（因子动物园）</strong>。一句吐槽：<em>Asset pricing is a theory that looking for risks</em>——资产定价理论某种程度上是"不可证伪"的，只要没法观测投资者的边际效用 m，任何"高收益是因为高风险"的结论都可以通过更换 m 强行拟合。<strong>这种"寻找 m 的游戏"已经玩了半个世纪。</strong></p>
+<p><strong>更现实的理解（双义性总结）</strong>：因子模型既是<strong>资产定价理论</strong>（因子=系统性风险，因子收益=风险补偿），也是<strong>统计描述工具</strong>（因子=收益共变结构的统计量，因子收益=数据中的稳定模式）。现实中两种机制可能同时存在。</p>
+<blockquote>
+<p>【考点】引用三连（体现学术素养）：Friedman——假设有效性的唯一检验是预测与经验的比较；Coase——理论不只是预测准确，更是思考的基座；Einstein——Everything should be made as simple as possible, but no simpler.</p>
+</blockquote>
+<h2>3. 检验方法 1：时间序列回归与 GRS 检验</h2>
+<p><strong>适用前提</strong>：因子收益率序列 λ 已知（如市场组合、可交易的因子模拟组合）。</p>
+<p><strong>步骤</strong>（对每个资产 i 做时间序列回归）：</p>
+<p><div class="math-display">$$ R_{i(t)}^e=\alpha_i+\beta_i^\intercal\lambda_{(t)}+\epsilon_{i(t)} $$</div></p>
+<p><strong>检验目标</strong>：</p>
+<ol>
+<li>因子风险溢价是否 &gt;0：对 λ 的均值单独做 t 检验</li>
+<li>单个 αᵢ 是否为 0：单个 t 检验</li>
+<li><strong>所有 αᵢ 联合为 0：GRS 检验</strong>（Gibbons–Ross–Shanken）：</li>
+</ol>
+<p><div class="math-display">$$ \frac{T-N-K}{N}\big(1+\hat E[\boldsymbol\lambda]^\intercal\hat\Sigma_\lambda^{-1}\hat E[\boldsymbol\lambda]\big)^{-1}\hat\alpha^\intercal\hat\Sigma^{-1}\hat\alpha\sim F_{N,\,T-N-K} $$</div></p>
+<p><strong>GRS 公式的两部分解读</strong>（理解比背公式重要）：</p>
+<ul>
+<li><span class="math-inline">$\hat\alpha^\intercal\hat\Sigma^{-1}\hat\alpha$</span>：α 的<strong>加权平方和</strong>——α 是 N×1 向量（每资产的定价误差），Σ̂ 是 N×N 残差协方差矩阵（考虑 α 之间的相关性），二次型类似"标准化后的 α 平方和"</li>
+<li><span class="math-inline">$(1+\hat E[\lambda]^\intercal\hat\Sigma_\lambda^{-1}\hat E[\lambda])^{-1}$</span>：<strong>因子强度的标准化因子</strong>。<span class="math-inline">$E[\lambda]^\intercal\Sigma_\lambda^{-1}E[\lambda]$</span> 类似因子回报的"夏普比率平方"（单因子 CAPM 时恰为 <span class="math-inline">$(E[\lambda]/\sqrt{\mathrm{Var}(\lambda)})^2$</span>）。<strong>因子越强（夏普越高），该项越大，检验越严格</strong>——强因子应该解释更多回报，任何非零 α 都算更严重的模型失效；弱因子的容忍度则更高</li>
+</ul>
+<p><strong>GRS 的假设</strong>：残差同方差、无自相关、与因子独立（正态假设下 F 分布精确）；大样本下无需正态但 χ² 统计量仍假设同方差无自相关。<strong>更稳健的做法：GMM</strong>——矩条件 <span class="math-inline">$E[\epsilon_t]=0$</span>（N 个）+ <span class="math-inline">$E[\lambda_t\otimes\epsilon_t]=0$</span>（K×N 个），恰好识别，给出 Robust error 无需同方差假设。</p>
+<h2>4. 检验方法 2：两步法横截面回归（two-pass）与 Shanken 调整</h2>
+<p><strong>适用前提</strong>：因子收益率 λ <strong>未知</strong>（因子只是特征变量，如 GDP、非交易宏观量）。</p>
+<p><strong>第一步（时间序列回归，对每个 i）</strong>：</p>
+<p><div class="math-display">$$ R_{i(t)}^e=\alpha_i+\beta_i^\intercal f_{(t)}+u_{i(t)} $$</div></p>
+<p>⚠️ 注意：<span class="math-inline">$f_{(t)}$</span> <strong>不是因子的收益率，而是因子的代理变量</strong>（或因子值本身）。此时截距 αᵢ <strong>不是定价误差</strong>——βᵢ 是因子暴露的估计值（因为无法直接观察因子收益率，只能用时间序列回归估因子暴露）。</p>
+<p><strong>第二步（横截面回归）</strong>：先取时间均值 <span class="math-inline">$\hat E[R_i^e]=\frac1T\sum_t R_{i(t)}^e$</span>，然后做一次横截面回归：</p>
+<p><div class="math-display">$$ \hat E[R_{i(t)}^e]=\lambda^\intercal\hat\beta_{(t)}+\alpha_{(t)} $$</div></p>
+<p><div class="math-display">$$ \hat\lambda=(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal\hat E[R^e],\qquad \hat\alpha=\hat E[R^e]-\hat\beta\hat\lambda $$</div></p>
+<p><strong>OLS 的两难（手写批注重点）</strong>：这个回归是从"最小化 α 的平方和"出发的。</p>
+<ul>
+<li>加截距项 = 更 <strong>Robust</strong>（若理论 α=0 是错的/因子没找全，无截距会成为遗漏变量 → 估计不一致）</li>
+<li>不加截距项 = 更 <strong>Efficient</strong>（理论对时，无截距回归增强参数估计效率，可能拒绝错误的假设）</li>
+</ul>
+<p><strong>统计推断（含 Shanken 调整）</strong>：</p>
+<p><div class="math-display">$$ \mathrm{cov}(\hat\lambda)=\frac1T\Big[(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal\Sigma\hat\beta(\hat\beta^\intercal\hat\beta)^{-1}\big(1+\lambda^\intercal\Sigma_f^{-1}\lambda\big)+\Sigma_f\Big] $$</div></p>
+<p><div class="math-display">$$ \hat\alpha^\intercal\mathrm{cov}(\hat\alpha)^{-1}\hat\alpha\sim\chi^2_{N-K} $$</div></p>
+<p><strong>Shanken (1992) 调整</strong>：因子 <span class="math-inline">$(1+\lambda'\Sigma_f^{-1}\lambda)$</span>——<strong>第一步的因子暴露 β 是估计出来的，要把估计误差（measurement error）考虑进去</strong>。月度数据上该误差影响实际很小；也有 GLS 和 GMM 版本（Cochrane 2005）。</p>
+<h2>5. 检验方法 3：Fama–MacBeth 回归（1973）</h2>
+<p><strong>与两步法的唯一区别</strong>：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>两步法</th>
+<th>Fama–MacBeth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第二步</td>
+<td>先取<strong>时间平均</strong> <span class="math-inline">$\hat E[R_i^e]$</span>，再做<strong>一次</strong>横截面回归</td>
+<td><strong>在每个时间 t 上都做</strong>横截面回归 <span class="math-inline">$R_{i(t)}^e=\lambda_t^\intercal\hat\beta_{(t)}+\alpha_{(t)}$</span></td>
+</tr>
+<tr>
+<td>样本</td>
+<td>相当于 T 个横截面压成 1 个</td>
+<td><strong>相当于增加了样本</strong>（T 个截面估计）</td>
+</tr>
+</tbody>
+</table>
+<p>统计量（假设误差时间独立）：</p>
+<p><div class="math-display">$$ \hat\lambda=\frac1T\sum_{t=1}^T\lambda_t,\qquad \sigma^2(\hat\lambda)=\frac{1}{T^2}\sum_{t=1}^T(\lambda_t-\hat\lambda)^2 $$</div></p>
+<p>因子溢价是否为 0：用 λₜ 序列做 t 检验；α 联合检验：<span class="math-inline">$\hat\alpha^\intercal\mathrm{cov}(\hat\alpha)^{-1}\hat\alpha\sim\chi^2_{N-K}$</span>（Robust Error）。</p>
+<p><strong>三个实务要点</strong>：</p>
+<ol>
+<li>时间独立假设在资产定价里可接受（收益率时间相关性弱），公司金融未必；即便不独立，σ² 改用 <strong>Newey–West 调整</strong> <span class="math-inline">$\hat\sigma^2(\hat\lambda)=\frac1T\sum_{j=-\infty}^{\infty}\mathrm{cov}_T(\hat\lambda_t,\hat\lambda_{t-j})$</span></li>
+<li><strong>第一步的 β 可以滚动估计</strong>：对每个 t，用 t−h 到 t−1 期数据回归得 <span class="math-inline">$\hat\beta_{it-1}$</span>（FM 原文用 5 年月度收益），第二步用这些逐期不同的 β 做横截面回归——<strong>rolling window</strong></li>
+<li><strong>NW 调整的工程技巧</strong>（手册第 10 篇代码精读）：要检验 λ₀ₜ 均值是否为 0，做单变量回归 <span class="math-inline">$\lambda_{0t}=\text{intercept}+u_t$</span>，<strong>intercept 的估计值就是均值</strong>，同时软件可以轻松计算 NW 调整，无需手动实现</li>
+</ol>
+<p><strong>横截面回归的"纯净性"</strong>（手写批注重点）：<span class="math-inline">$(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal$</span> 是 K×N 的因子模拟组合权重矩阵，具有性质 <span class="math-inline">$[(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal]\hat\beta=I_K$</span>——第 k 行给出的组合在第 k 因子上暴露为 1、其他因子上暴露为 0 ⇒ <strong>横截面回归得到的因子预期收益率估计，更"纯净"</strong>。但有"变赖"的嫌疑：β 是前一步算出来的，万一 β 也错了呢？</p>
+<h2>6. 因子收益率从哪来：三问三答</h2>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>回答</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>因子收益率是什么、如何估计？</td>
+<td>抽象概念；实践中只能用<strong>可交易证券的组合</strong>模拟</td>
+</tr>
+<tr>
+<td>因子暴露是什么、如何估计？</td>
+<td>时序回归估计（需要已知因子收益）；或直接用公司特征（排序法）</td>
+</tr>
+<tr>
+<td>鸡生蛋还是蛋生鸡？</td>
+<td>估暴露需要因子收益，构建因子模拟组合又需要暴露——<strong>如果因子是可交易证券的特征（BM、size、momentum），排序法直接破局；如果不是可交易的（如 GDP），只能回到两步法</strong></td>
+</tr>
+</tbody>
+</table>
+<p>理想模拟组合的两个条件：① 只在该因子上暴露，其他因子暴露为 0（否则收益不能归因于该因子）；② 多个合格组合中选<strong>特质风险最小</strong>的（<span class="math-inline">$R_{it}^e=\alpha+\beta_{ik}\lambda_{kt}+0\times\lambda_{jt}+\epsilon$</span> 中 ε 变化要小）。</p>
+<hr />
+<h2>7. 排序法：单排与双排</h2>
+<h3>7.1 单排（univariate sort）</h3>
+<ol>
+<li>确定特征，选择股票池</li>
+<li>按特征取值分组（如 10 组）；构建多空组合：做多最高组、做空最低组（<strong>金额相同、无需自有资金</strong>；组内按市值加权）</li>
+<li>定时更新（rebalance）</li>
+</ol>
+<p><strong>排序法的哲学</strong>（课程原话，划线重点）：<em>别估计因子暴露了，就用这个想法——如果证券对应的这个特征指标高，则它在这个因子上的因子暴露就高。</em> 这个特征不一定是因子暴露，也没有什么模型。<strong>抛开所有理论的直觉：拥有某个特征的证券（因子暴露更高），未来收益会更好（因子预期收益为正）。</strong>（配套笑话：量化交易野路子——菜场大妈选股策略，10 年 100 倍。）</p>
+<h3>7.2 ★ 双排（double sort）：控制另一个因子</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>independent sort（独立双排）</th>
+<th>dependent sort（条件双排）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>做法</td>
+<td>v1 按分位分组，v2 按分位分组，取<strong>交集</strong></td>
+<td>先按 v1 分组，<strong>组内</strong>再按 v2 分组</td>
+</tr>
+<tr>
+<td>顺序要求</td>
+<td>v1、v2 顺序无要求</td>
+<td><strong>顺序很重要</strong>（conditional on v1）</td>
+</tr>
+<tr>
+<td>问题</td>
+<td>v1、v2 高度相关时，某些交叉组成员很多、某些很少甚至没有</td>
+<td>组内样本被切薄</td>
+</tr>
+<tr>
+<td>本质</td>
+<td>无条件联合分布</td>
+<td>v1 各组内部 v2 的情况</td>
+</tr>
+</tbody>
+</table>
+<p>多因子时多重排序的问题：交集会越来越小，甚至没有交集。</p>
+<hr />
+<h2>8. 截面多因子 vs 时序多因子：用什么作为因子暴露？</h2>
+<p>三种套路（Fama French 2020 给出比较，<strong>结论：截面多因子模型的解释力较好</strong>）：</p>
+<ol>
+<li><strong>时序多因子模型</strong>（最传统的 FF 方法）：先按特征排序得到因子收益率，时序回归得到因子暴露</li>
+<li><strong>截面多因子模型</strong>：把特征直接作为因子暴露，跳过时序回归，直接在每个 t 做 FM 横截面回归，考察 <span class="math-inline">$\bar\lambda$</span> 是否为 0</li>
+<li>混合：先用公司特征和 <span class="math-inline">$R_{it}^e$</span> 做每个 t 的截面回归得 λₜ，再用 λₜ 和 <span class="math-inline">$R_{it}^e$</span> 做时序回归得 β</li>
+</ol>
+<hr />
+<h2>9. ★ 检验异象：三种方法的完整对照</h2>
+<p><strong>已知一个异象</strong>（如某个 anomaly 指标），检验它是否有独立于已知因子的预测力：</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>回归设定</th>
+<th>检验什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>排序法检验</td>
+<td>若 anomaly 与已知因子相关性强，单排可能捕捉的是别人的风险 → <strong>双排</strong>（独立双排取交集）</td>
+<td>交集组合的收益差异</td>
+</tr>
+<tr>
+<td>时序检验</td>
+<td><span class="math-inline">$R^e_{Anomaly,t}=\alpha+\beta_1R^e_{Mt}+\beta_2SMB_t+\beta_3HML_t+\epsilon_t$</span>，放等式左边，已知因子放右边</td>
+<td><strong>截距 α 是否显著不为 0（NW 调整）</strong></td>
+</tr>
+<tr>
+<td>FM 回归检验</td>
+<td>下一期个股收益放左边，anomaly exposure + 其他因子 exposure 放右边：<span class="math-inline">$R^e_{i,t+1}=\gamma_t+\lambda_{0t}\mathrm{Anomaly}_{it}+\lambda_{1t}\beta_{it}+\lambda_{2t}Size_{it}+\lambda_{3t}BM_{it}+u_{it}$</span></td>
+<td><strong>λ₀ₜ 的时间平均是否 ≠ 0（NW 调整）</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>10. 方法哲学与数据挖掘（Griliches 引言）</h2>
+<p>课程总结（个人经验，原文摘录）：</p>
+<ul>
+<li>各种方法差异不大。一种方法给出了显著的结果，另一种方法通常也不会不显著</li>
+<li>为了稳健起见，学术论文通常考察多种方法、各种检验</li>
+<li>然而，<strong>p-hacking、数据挖掘出来的假象难以避免</strong></li>
+<li>另一方面，市场本身不是平稳的，风险源一直都在变，<strong>样本外的表现不稳定</strong></li>
+<li>实践中，应当<strong>仔细思索因子的经济含义</strong>，避免陷入数据挖掘的狂热</li>
+</ul>
+<blockquote>
+<p>The cost of computing has dropped exponentially, but the cost of thinking is what it always was. That is why we see so many articles with so many regressions and so little thought. ——Zvi Griliches</p>
+</blockquote>
+<p><strong>与手册第 1 篇联动</strong>：多重比较/数据窥探（测 N 个策略门槛 α/N）、与你的项目联动：DSR/PBO 代入 N=289 次试错。</p>
+<hr />
+<h2>11. 自测清单（必须掌握的考点）</h2>
+<ul>
+<li>☐ CAPM 直觉三句话：因子、暴露、α 三者的角色</li>
+<li>☐ αᵢ 显著不为 0 的三种解释（因子没找全/模型问题/异象）</li>
+<li>☐ 风险补偿 vs 误定价：两种机制为何难以用数据区分（SDF 不可观察）</li>
+<li>☐ GRS 公式两部分各自含义（α 加权平方和 + 因子强度标准化）及假设</li>
+<li>☐ 两步法第一步的 α 为什么不是定价误差；Shanken 调整修正什么</li>
+<li>☐ FM 与两步法的区别（每个 t 都做截面 = 增加样本）；rolling β</li>
+<li>☐ 因子模拟组合权重矩阵 <span class="math-inline">$[(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal]\hat\beta=I_K$</span> 的含义</li>
+<li>☐ 理想模拟组合的两个条件；排序法为什么能绕开鸡生蛋问题</li>
+<li>☐ independent vs dependent double sort 的区别与适用</li>
+<li>☐ 时序多因子 vs 截面多因子；FF (2020) 的结论</li>
+<li>☐ 异象检验三种方法的回归设定</li>
+</ul>
+<h2>12. 30 秒速查总表</h2>
+<table>
+<thead>
+<tr>
+<th>考点</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CAPM</td>
+<td><span class="math-inline">$E[R_i^e]=\beta_iE[\lambda]$</span>：暴露 × 因子溢价</td>
+</tr>
+<tr>
+<td>APT</td>
+<td><span class="math-inline">$E[R_i^e]=\beta_i^\intercal\lambda+\alpha_i$</span>；α = 定价误差/异象/基金经理能力</td>
+</tr>
+<tr>
+<td>因子两义性</td>
+<td>风险补偿（坏状态表现差）vs 市场误定价（行为偏差/约束/套利成本）；SDF 不可观察 ⇒ 难区分</td>
+</tr>
+<tr>
+<td>时序检验</td>
+<td>每个 i 回归 α+βλ；单个 t 检验 + GRS 联合检验</td>
+</tr>
+<tr>
+<td>GRS 直觉</td>
+<td>强因子 ⇒ 检验更严格；弱因子 ⇒ 容忍度高</td>
+</tr>
+<tr>
+<td>两步法</td>
+<td>β 时序估 → λ 截面估；Shanken 调整 (1+λ'Σ_f⁻¹λ) 修 EIV</td>
+</tr>
+<tr>
+<td>FM</td>
+<td>每个 t 做截面回归，λₜ 序列取均值；NW 调整；比两步法增加样本</td>
+</tr>
+<tr>
+<td>因子模拟组合</td>
+<td><span class="math-inline">$(\hat\beta^\intercal\hat\beta)^{-1}\hat\beta^\intercal\hat\beta=I_K$</span>：目标因子暴露 1，其他 0</td>
+</tr>
+<tr>
+<td>排序法</td>
+<td>特征高 = 暴露高；可交易特征直接排序造因子；非交易量（GDP）用两步法</td>
+</tr>
+<tr>
+<td>单排/双排</td>
+<td>双排控另一个因子；independent 交集可能失衡，dependent 有顺序</td>
+</tr>
+<tr>
+<td>截面 vs 时序多因子</td>
+<td>特征直接当暴露跳过第一步；FF (2020)：截面多因子解释力较好</td>
+</tr>
+<tr>
+<td>异象检验</td>
+<td>排序（双排）/ 时序（α + NW）/ FM（λ₀ₜ 均值 + NW）三法并用</td>
+</tr>
+</tbody>
+</table>
+<p><em>参考：课程《因子模型及相关计量经济学概述》；Cochrane, 2005, Asset Pricing (Princeton)；Fama &amp; MacBeth (1973)；Shanken (1992)；Fama &amp; French (2020)。</em></p>
+</article>
+<div class="pager-row"><a class="pager prev" href="08.html">← 防泄漏工程：Purged Walk-Forward</a><a class="pager next" href="10.html">因子实证与代码精读（A 股） →</a></div>
+<footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>
+</main>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.querySelector("article"), {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>

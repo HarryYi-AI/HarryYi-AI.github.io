@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 · 因子实证与代码精读（A 股） | Quant 面试复习手册</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <a class="brand" href="index.html">Harry · Quant 手册</a>
+  <nav><a class="nav-item" href="00.html"><span class="nav-num">00</span>总目录与快速通道</a>
+<a class="nav-item" href="01.html"><span class="nav-num">01</span>概率与统计</a>
+<a class="nav-item" href="02.html"><span class="nav-num">02</span>随机微积分与股价模型</a>
+<a class="nav-item" href="03.html"><span class="nav-num">03</span>衍生品定价与 BSM</a>
+<a class="nav-item" href="04.html"><span class="nav-num">04</span>机器学习与深度学习</a>
+<a class="nav-item" href="05.html"><span class="nav-num">05</span>线性代数与微积分</a>
+<a class="nav-item" href="06.html"><span class="nav-num">06</span>金融专题：做市、组合与建模</a>
+<a class="nav-item" href="07.html"><span class="nav-num">07</span>预测市场与二元合约</a>
+<a class="nav-item" href="08.html"><span class="nav-num">08</span>防泄漏工程：Purged Walk-Forward</a>
+<a class="nav-item" href="09.html"><span class="nav-num">09</span>因子研究方法论：FM 回归与检验体系</a>
+<a class="nav-item active" href="10.html"><span class="nav-num">10</span>因子实证与代码精读（A 股）</a></nav>
+  <div class="sidebar-foot"><a href="index.html">⌂ 主页</a> · <a href="about.html">关于</a></div>
+</aside>
+<main class="content">
+<article>
+<h1>Quant 面试复习手册 10｜因子实证与代码精读（完整讲解版）：A 股 2016–2025</h1>
+<blockquote>
+<p>📌 Quant 面试复习手册 · 第 10 篇（补充篇）<br />
+本篇是第 9 篇方法论的代码落地：Beta/Size 单排、双排、FM 回归、FF3 构建（含 BM 的 point-in-time 处理）、Newey–West 的向量化实现、White's Reality Check——全部来自真实 A 股课程 notebook，<strong>每个实现细节都对应一个数据坑</strong>。<br />
+来源：课程 quant_2026 notebooks（2-sort_FMreg_on_beta_size / 3-FF3 / 6-other_factors / 7-ta_test）+ myfunc 工具库。</p>
+</blockquote>
+<hr />
+<h2>1. 数据工程：每个细节都是一个面试题</h2>
+<h3>1.1 财务数据的 point-in-time（FF3 notebook 最核心的教训）</h3>
+<p>财务数据的复杂性来自三个时间：<strong>报表数据所处的时间（endDate）</strong>、<strong>报表报告的时间（endDateRep）</strong>、<strong>报表修改的时间（publishDate）</strong>。</p>
+<blockquote>
+<p>【易错】很多研究都采用了"事后修改"过的数据（例如 GDP 数据）。如果做的是预测性质的研究，站在 t 时刻，是不可能知道 t+5 时刻会修改 t−1 时刻的数据的——<strong>很多研究因此站不住脚</strong>。</p>
+</blockquote>
+<p>两种合理处理：① 预留充足时间，保证使用时数据已可得（不一定最新）；② point-in-time——无论何时使用，只用<strong>当时已发布</strong>的最新版本。</p>
+<p><strong>BM ratio 的 FF (1993) 原文构造</strong>：</p>
+<ul>
+<li>每年 12 月底的 book equity ÷ 12 月最后一个交易日的 mktcap = BM</li>
+<li>这个 BM 作为<strong>下一年 7 月至下下一年 6 月</strong>的排序变量（错峰 6 个月是为了避免价格变动本身带来的市值-收益相关性）</li>
+</ul>
+<p><strong>实现细节</strong>：publishDate 与 tradeDate merge 时要 <strong>outer</strong>（publishDate 可能是非交易日，merge 后 tradeDate 为空的填成 publishDate 便于排序），再按 secID + tradeDate sort，用 ffill 让每条财报数据"一直有效到下一份发布"。月份错峰映射：2017 年 12 月的 BM 分组对应 <strong>2018:07–2019:06</strong> 的收益（ret_year − 1，1–6 月再 −1）。</p>
+<h3>1.2 停牌的三种处理逻辑（不能一刀切）</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>停牌处理</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>计算动量</td>
+<td>可以不处理</td>
+<td>停牌前后价格算收益率，也是动量的一种衡量</td>
+</tr>
+<tr>
+<td>计算 Beta</td>
+<td>必须剔除（不可设 0）</td>
+<td>市场收益每天都有，个股停牌设 0 会造成回归大偏差</td>
+</tr>
+<tr>
+<td>计算波动率/月收益</td>
+<td>必须剔除</td>
+<td>设 0 会低估波动；停牌无法交易无法调仓</td>
+</tr>
+</tbody>
+</table>
+<p><strong>填充缺失日期的快速技巧</strong>（fill_missing 函数）：对每只股票取 start/end → 生成完整日期序列 → 构造 MultiIndex(stk_id, dates) → <strong>reindex 扩充原 DataFrame，缺失自动填 NaN</strong>——比逐股循环快得多。</p>
+<h3>1.3 其他工程细节</h3>
+<ul>
+<li><strong>ST 股剔除</strong>；<strong>新股上市首月不参与</strong>（找到每只股票上市日期与样本起点比较）</li>
+<li><strong>排序用上月末市值</strong>：t 月末市值作为 t+1 月的分组标准（FF 惯例）——避免当月价格变动与收益本身的相关性污染分组</li>
+<li><strong>分块下载数据</strong>：优矿 API 有调用频率限制，按季度/按年分块 + 捕获截断提示重试</li>
+</ul>
+<hr />
+<h2>2. 单排实现：按 Beta 分 10 组（完整流程模板）</h2>
+<h3>2.1 分组代码模式（所有单排的通用模板）</h3>
+<pre><code class="language-python">q = {f&#x27;q{i}&#x27;: v for i, v in zip(range(1, 10), np.arange(0.1, 1.0, 0.1))}
+quantile_df = pd.DataFrame({k: ret_df.groupby(&#x27;group_month&#x27;)[&#x27;Beta252&#x27;].quantile(v) for k, v in q.items()})
+ret_df_q = pd.merge(ret_df, quantile_df, on=&#x27;group_month&#x27;)
+
+portfolios = {}
+portfolios[&#x27;p1&#x27;] = ret_df_q.loc[ret_df_q[&#x27;Beta252&#x27;] &lt;= ret_df_q[&#x27;q1&#x27;], cols]
+for i in range(2, 10):
+    idx = (ret_df_q[f&#x27;q{i-1}&#x27;] &lt;= ret_df_q[&#x27;Beta252&#x27;]) &amp; (ret_df_q[&#x27;Beta252&#x27;] &lt;= ret_df_q[f&#x27;q{i}&#x27;])
+    portfolios[f&#x27;p{i}&#x27;] = ret_df_q.loc[idx, cols]
+portfolios[&#x27;p10&#x27;] = ret_df_q.loc[ret_df_q[&#x27;Beta252&#x27;] &gt;= ret_df_q[&#x27;q9&#x27;], cols]</code></pre>
+<h3>2.2 组合收益的两种加权</h3>
+<ul>
+<li><strong>简单平均（EW）</strong>：<code>groupby('ret_month')['exret'].mean()</code></li>
+<li><strong>市值加权（VW）</strong>：组内市值求和 → 每股 weight = mktcap/mktcapsum → weighted_ret 求和（<code>np.vstack</code> 快速合并各组序列）</li>
+</ul>
+<h3>2.3 ★ 显著性检验：NW 调整的 t 值</h3>
+<p>每组月收益序列 y，检验均值是否为 0——<strong>用 ols_hac 做常数回归</strong>：</p>
+<pre><code class="language-python">reg = ols_hac(y, X=None, maxlags=6)
+mean_values[k] = reg.params[0]
+t_values[k] = reg.tvalues[0]
+# 多空组合 p10−p1 同样处理
+y = portfolios_crs_mean[&#x27;p10&#x27;] - portfolios_crs_mean[&#x27;p1&#x27;]</code></pre>
+<p><strong>技巧</strong>：均值 = 常数回归的截距，NW 标准误由 HAC 自动给出（第 9 篇 FM 一节的工程技巧）。</p>
+<hr />
+<h2>3. ols_hac 精读：向量化 Newey–West（第 6 篇 NW 的代码实现）</h2>
+<pre><code class="language-python">W = X * u                      # (T, k)：逐行 = u_t · x_t
+S = W.T @ W                    # Lag 0 项：Σ x_t x_t&#x27; u_t²
+for l in range(1, maxlags + 1):
+    weight = 1 - l / (maxlags + 1)         # Bartlett 权重（线性衰减）
+    gamma_l = W[l:].T @ W[:-l]             # 所有 t 与 t−l 内积的一步算出
+    S += weight * (gamma_l + gamma_l.T)    # 自协方差是对称的
+if small_sample:
+    S *= T / (T - k)
+V = XtX_inv @ S @ XtX_inv      # 三明治协方差
+se = np.sqrt(np.diag(V)); t_stat = beta / se</code></pre>
+<p>对照第 6 篇 NW 公式 <span class="math-inline">$\hat\sigma^2(\hat\lambda)=\frac1T\sum_{j=-\infty}^{\infty}\mathrm{cov}_T(\hat\lambda_t,\hat\lambda_{t-j})$</span>：Bartlett 权重 <span class="math-inline">$1-\frac{l}{L+1}$</span>（线性衰减）、<code>gamma_l + gamma_l.T</code> 一次矩阵乘法算出所有滞后交叉项（避免逐行循环）、小样本自由度修正 <code>T/(T−k)</code>。<strong>这就是你项目 t_NW 的实现原型。</strong></p>
+<hr />
+<h2>4. ★ A 股单排实证结论（2016:01–2025:02，全部 A 股）</h2>
+<h3>4.1 Beta 单排（按上月末 Beta252 分 10 组）</h3>
+<ul>
+<li><strong>各组合收益率没有明显区别：CAPM 在中国市场也不成立</strong></li>
+<li>p1（低 Beta）与 p10（高 Beta）累积收益接近；p2/p9、p3–p8 分层接近</li>
+<li>组合特征：p10 高 Beta 组在 2015、2018、2021 前后大起大落；<strong>沪深 300 指数的编制正好围绕 p9、p10</strong>（指数由高 Beta 股主导）</li>
+<li>个股 Beta 观察：上市初期 Beta 时变剧烈（新股特殊交易规则 + 聚光灯效应）；<strong>Beta252 比 Beta60/Beta120 稳定</strong></li>
+</ul>
+<h3>4.2 市值（Size）单排</h3>
+<p><strong>Size effect 文献链</strong>：Banz (1981) 最早发现 → Fama &amp; French (1992) 系统检验 → FF (1993) 构建 SMB 因子 → FF (2012) 全球市场普遍存在。</p>
+<p>FF 的市值口径：<span class="math-inline">$MktCap_{i,t}^{FF}=$</span> t 年 6 月底股价 × 6 月底股本，作为 t 至 t+1 年的分类标准（错峰防相关性）。</p>
+<p><strong>A 股结论</strong>：收益率随市值增大而减小；早年 p1–p3 显著 &gt;0，<strong>2016–2026 期间 &gt;0 但未达统计显著</strong>；各组之间 Beta 无显著区别。</p>
+<h3>4.3 双排（independent sort：市值 2 组 × Beta 3 组）</h3>
+<ul>
+<li><strong>Beta 组内：小盘股平均收益高于大盘股</strong>；小盘上涨多、下跌也多</li>
+<li>实现：分别按分位分组（市值 0.5、Beta 0.3/0.7）→ 各组 <strong>merge 取交集</strong> → 组内算收益</li>
+</ul>
+<h3>4.4 三种方法结论一致性</h3>
+<p><strong>单排、双排、FM 回归结论一致：小市值股比大市值股表现更好；不同时间段市值显著性不一样；Beta 在横截面上对收益无明显差异。</strong>（呼应第 9 篇：一种方法显著，另一种通常也显著；多法并用是稳健性标准动作。）</p>
+<hr />
+<h2>5. FM 回归的实现（第 9 篇方法的代码化）</h2>
+<pre><code class="language-python">def fm_reg(df):
+    df_ = df.dropna()
+    if df_.shape[0] &lt; 15:          # 当月截面少于 15 只则跳过
+        return None
+    reg = LinearRegression().fit(y=df_.loc[:, &#x27;exret&#x27;], X=df_.loc[:, [&#x27;Beta252&#x27;, &#x27;size&#x27;]])
+    return np.insert(reg.coef_, 0, reg.intercept_)   # [截距, β系数, size系数]
+
+temp = ret_df_q.groupby(&#x27;ret_month&#x27;).apply(fm_reg)
+reg_result_df = pd.DataFrame(temp.values.tolist(),
+                             index=temp.index,
+                             columns=[&#x27;intercept&#x27;, &#x27;beta_coef&#x27;, &#x27;size_coef&#x27;])
+# 每列做 NW t 检验（同 2.3 的 ols_hac）</code></pre>
+<p><strong>Winsorization 前后对比</strong>：按月 0.995/0.005 分位缩尾 Beta 与 size 后再做 FM——极端值对截面回归系数的扰动被控制。<strong>组内排序需上月末市值</strong>（避免当月相关性）。</p>
+<hr />
+<h2>6. FF3 构建（BM point-in-time + 6 组合）</h2>
+<h3>6.1 六个组合 → SMB/HML</h3>
+<p>市值 2 组（Small/Big）× BM 3 组（Low/Medium/High，30/40/30）= 6 个组合：</p>
+<pre><code class="language-text">bm1_mktcap1 = SL    bm2_mktcap1 = SM    bm3_mktcap1 = SH
+bm1_mktcap2 = BL    bm2_mktcap2 = BM    bm3_mktcap2 = BH
+SMB = (SL+SM+SH)/3 − (BL+BM+BH)/3
+HML = (SH+BH)/2 − (SL+BL)/2</code></pre>
+<p>市场收益 = CAPM 的市场收益。中证 800 = 中证 500 + 沪深 300（大中市值整体）。</p>
+<h3>6.2 BM 的 A 股实证结论（排序：t 年 7 月–t+1 年 6 月，按 t−1 年 12 月 BM）</h3>
+<ul>
+<li>月、年平均收益<strong>不明显单调</strong>（美国的价值溢价在 A 股不稳健）</li>
+<li>最大 BM 组（估值最低）与最小 BM 组（估值最高）的市值起伏都很大——<strong>BM 效应可能与 market cap 有交互</strong></li>
+<li>point-in-time 版本：用最新 BM 更新组合带来收益递增，但各组合收益仍不显著；<strong>p10−p1 的差距显著为正</strong> ✓</li>
+</ul>
+<hr />
+<h2>7. ta_test：技术策略的统计检验（White's Reality Check）</h2>
+<h3>7.1 两个技术策略</h3>
+<ul>
+<li><strong>MA 双均线</strong>：收盘价上穿 MA30 买入、下穿卖出。两种假设口径：Case 1 当日收盘成交（乐观）；Case 2 次日开盘成交（保守）</li>
+<li><strong>MACD</strong>：DIF = EMA_fast − EMA_slow；金叉（DIF 上穿 DEA）买入、死叉卖出；EMA 递推 <span class="math-inline">$EMA_t=Value_t\cdot\frac{Smoothing}{1+Days}+EMA_{t-1}\cdot(1-\frac{Smoothing}{1+Days})$</span></li>
+</ul>
+<h3>7.2 ★ 两种统计检验的缺陷与对策</h3>
+<p><strong>截面检验（cumulative return 版）的缺陷</strong>：累积收益率可能在区间最后一段短期冲高；且累积收益右侧无界、左侧有界（0），分布严重不正态。<strong>对策：用日均收益的均值做截面检验</strong>（分布好得多）。</p>
+<p><strong>★ White's Reality Check（Bootstrap）</strong>：</p>
+<ol>
+<li>原始指数收益<strong>去均值</strong>：过滤牛熊市给随机策略带来的正/负偏误</li>
+<li>position return <strong>去均值</strong>：Bootstrap 的原假设是"策略期望收益为 0"，以此生成抽样分布</li>
+<li>对 1 只股票测 → 对 300 只股票测：<strong>多策略时的多重比较正是 WRC 要解决的问题</strong>（呼应第 1 篇 Bonferroni/FDR）</li>
+</ol>
+<hr />
+<h2>8. 自测清单（必须掌握的考点）</h2>
+<ul>
+<li>☐ 财务数据三时间（endDate/endDateRep/publishDate）与 point-in-time 处理</li>
+<li>☐ BM 的 FF 错峰口径（12 月 BM → 次年 7 月起分组）与月份错峰映射</li>
+<li>☐ 停牌三种处理逻辑（动量可容忍/Beta 必剔/波动率必剔）</li>
+<li>☐ fill_missing 的 reindex 快速填充技巧</li>
+<li>☐ 单排通用模板（分位字典 + merge + 分组切片）</li>
+<li>☐ EW/VW 两种加权；每组均值 + p10−p1 的 NW t 值</li>
+<li>☐ ols_hac 逐行：Bartlett 权重、gamma_l 对称、三明治、小样本修正</li>
+<li>☐ 双排 independent 的 merge 交集实现</li>
+<li>☐ FM 回归实现（fm_reg ≥15 只 + NW t）与 winsor 前后对比</li>
+<li>☐ FF3 六组合与 SMB/HML 构造；BM 的 A 股实证结论</li>
+<li>☐ White's Reality Check 两步去均值的原因</li>
+</ul>
+<h2>9. 30 秒速查总表</h2>
+<table>
+<thead>
+<tr>
+<th>考点</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>point-in-time</td>
+<td>只用发布时点可得的数据；publishDate outer merge + ffill</td>
+</tr>
+<tr>
+<td>停牌</td>
+<td>动量可容忍、Beta/波动率必剔、月收益必剔</td>
+</tr>
+<tr>
+<td>填 NA</td>
+<td>MultiIndex reindex 一次到位（快）</td>
+</tr>
+<tr>
+<td>排序</td>
+<td>用上月末市值/年末 BM，避免当月相关性</td>
+</tr>
+<tr>
+<td>组合收益</td>
+<td>EW = mean；VW = Σ(weight × ret)，weight = mktcap/组内和</td>
+</tr>
+<tr>
+<td>显著性</td>
+<td>每组 + 多空组合各做 ols_hac 常数回归（NW t 值）</td>
+</tr>
+<tr>
+<td>双排</td>
+<td>独立双排 = 分别分位 → merge 交集；相关高时交叉组失衡</td>
+</tr>
+<tr>
+<td>FM 实现</td>
+<td>每月截面回归（≥15 只），系数序列逐列 NW t 检验</td>
+</tr>
+<tr>
+<td>FF3</td>
+<td>6 组合 → SMB（市值）/HML（BM）；A 股 BM 单调性弱、p10−p1 显著</td>
+</tr>
+<tr>
+<td>WRC</td>
+<td>两步去均值（指数/持仓）→ bootstrap 零分布 → 多策略需 Reality Check</td>
+</tr>
+</tbody>
+</table>
+<p><em>参考：课程 quant_2026 notebooks；López de Prado《Advances in Financial ML》第 11 章；White (2000) Reality Check；新未源：stats_tools.py（ols_hac）、factor_func.py（double_sort/factor/daily_factor）。</em></p>
+</article>
+<div class="pager-row"><a class="pager prev" href="09.html">← 因子研究方法论：FM 回归与检验体系</a></div>
+<footer>Quant 面试复习手册 · 框架参考 OpenQuant Study Guide · 内容持续更新</footer>
+</main>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.querySelector("article"), {
+      delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>
